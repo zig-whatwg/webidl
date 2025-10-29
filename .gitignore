@@ -1,0 +1,30 @@
+# Zig cache
+.zig-cache/
+zig-cache/
+zig-out/
+
+# Build artifacts
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Generated docs
+docs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+*.profdata
+*.profraw
