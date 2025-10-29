@@ -249,38 +249,38 @@ pub const BigInt64Array = struct {
     buffer: *ArrayBuffer,
     byte_offset: usize,
     length: usize,
-    
+
     const Self = @This();
-    
+
     pub fn init(buffer: *ArrayBuffer, byte_offset: usize, length: usize) !Self {
         if (buffer.isDetached()) return error.DetachedBuffer;
         if (byte_offset % 8 != 0) return error.InvalidOffset;
         if (byte_offset + (length * 8) > buffer.byteLength()) return error.OutOfBounds;
-        
+
         return Self{
             .buffer = buffer,
             .byte_offset = byte_offset,
             .length = length,
         };
     }
-    
+
     pub fn get(self: Self, allocator: std.mem.Allocator, index: usize) !bigint_mod.BigInt {
         if (self.buffer.isDetached()) return error.DetachedBuffer;
         if (index >= self.length) return error.IndexOutOfBounds;
-        
+
         const byte_index = self.byte_offset + (index * 8);
         const bytes = self.buffer.data[byte_index..][0..8];
         const value = std.mem.readInt(i64, bytes, .little);
-        
+
         return bigint_mod.BigInt.fromI64(allocator, value);
     }
-    
+
     pub fn set(self: Self, index: usize, value: bigint_mod.BigInt) !void {
         if (self.buffer.isDetached()) return error.DetachedBuffer;
         if (index >= self.length) return error.IndexOutOfBounds;
-        
+
         const int_value = try value.toI64();
-        
+
         const byte_index = self.byte_offset + (index * 8);
         const bytes = self.buffer.data[byte_index..][0..8];
         std.mem.writeInt(i64, bytes, int_value, .little);
@@ -291,38 +291,38 @@ pub const BigUint64Array = struct {
     buffer: *ArrayBuffer,
     byte_offset: usize,
     length: usize,
-    
+
     const Self = @This();
-    
+
     pub fn init(buffer: *ArrayBuffer, byte_offset: usize, length: usize) !Self {
         if (buffer.isDetached()) return error.DetachedBuffer;
         if (byte_offset % 8 != 0) return error.InvalidOffset;
         if (byte_offset + (length * 8) > buffer.byteLength()) return error.OutOfBounds;
-        
+
         return Self{
             .buffer = buffer,
             .byte_offset = byte_offset,
             .length = length,
         };
     }
-    
+
     pub fn get(self: Self, allocator: std.mem.Allocator, index: usize) !bigint_mod.BigInt {
         if (self.buffer.isDetached()) return error.DetachedBuffer;
         if (index >= self.length) return error.IndexOutOfBounds;
-        
+
         const byte_index = self.byte_offset + (index * 8);
         const bytes = self.buffer.data[byte_index..][0..8];
         const value = std.mem.readInt(u64, bytes, .little);
-        
+
         return bigint_mod.BigInt.fromU64(allocator, value);
     }
-    
+
     pub fn set(self: Self, index: usize, value: bigint_mod.BigInt) !void {
         if (self.buffer.isDetached()) return error.DetachedBuffer;
         if (index >= self.length) return error.IndexOutOfBounds;
-        
+
         const int_value = try value.toU64();
-        
+
         const byte_index = self.byte_offset + (index * 8);
         const bytes = self.buffer.data[byte_index..][0..8];
         std.mem.writeInt(u64, bytes, int_value, .little);
@@ -332,21 +332,21 @@ pub const BigUint64Array = struct {
 test "BigInt64Array - basic operations" {
     var buffer = try ArrayBuffer.init(testing.allocator, 16);
     defer buffer.deinit(testing.allocator);
-    
+
     var array = try BigInt64Array.init(&buffer, 0, 2);
-    
+
     var value1 = try bigint_mod.BigInt.fromI64(testing.allocator, -100);
     defer value1.deinit();
     try array.set(0, value1);
-    
+
     var value2 = try bigint_mod.BigInt.fromI64(testing.allocator, 200);
     defer value2.deinit();
     try array.set(1, value2);
-    
+
     var retrieved1 = try array.get(testing.allocator, 0);
     defer retrieved1.deinit();
     try testing.expectEqual(@as(i64, -100), try retrieved1.toI64());
-    
+
     var retrieved2 = try array.get(testing.allocator, 1);
     defer retrieved2.deinit();
     try testing.expectEqual(@as(i64, 200), try retrieved2.toI64());
@@ -355,21 +355,21 @@ test "BigInt64Array - basic operations" {
 test "BigUint64Array - basic operations" {
     var buffer = try ArrayBuffer.init(testing.allocator, 16);
     defer buffer.deinit(testing.allocator);
-    
+
     var array = try BigUint64Array.init(&buffer, 0, 2);
-    
+
     var value1 = try bigint_mod.BigInt.fromU64(testing.allocator, 100);
     defer value1.deinit();
     try array.set(0, value1);
-    
+
     var value2 = try bigint_mod.BigInt.fromU64(testing.allocator, 200);
     defer value2.deinit();
     try array.set(1, value2);
-    
+
     var retrieved1 = try array.get(testing.allocator, 0);
     defer retrieved1.deinit();
     try testing.expectEqual(@as(u64, 100), try retrieved1.toU64());
-    
+
     var retrieved2 = try array.get(testing.allocator, 1);
     defer retrieved2.deinit();
     try testing.expectEqual(@as(u64, 200), try retrieved2.toU64());
@@ -378,12 +378,12 @@ test "BigUint64Array - basic operations" {
 test "BigInt64Array - detached buffer error" {
     var buffer = try ArrayBuffer.init(testing.allocator, 16);
     defer buffer.deinit(testing.allocator);
-    
+
     var array = try BigInt64Array.init(&buffer, 0, 2);
     buffer.detach(testing.allocator);
-    
+
     try testing.expectError(error.DetachedBuffer, array.get(testing.allocator, 0));
-    
+
     var value = try bigint_mod.BigInt.fromI64(testing.allocator, 42);
     defer value.deinit();
     try testing.expectError(error.DetachedBuffer, array.set(0, value));
@@ -392,11 +392,11 @@ test "BigInt64Array - detached buffer error" {
 test "BigUint64Array - bounds checking" {
     var buffer = try ArrayBuffer.init(testing.allocator, 16);
     defer buffer.deinit(testing.allocator);
-    
+
     var array = try BigUint64Array.init(&buffer, 0, 2);
-    
+
     try testing.expectError(error.IndexOutOfBounds, array.get(testing.allocator, 5));
-    
+
     var value = try bigint_mod.BigInt.fromU64(testing.allocator, 42);
     defer value.deinit();
     try testing.expectError(error.IndexOutOfBounds, array.set(5, value));

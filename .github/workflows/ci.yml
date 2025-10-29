@@ -180,9 +180,10 @@ jobs:
         run: |
           echo "Checking documentation completeness..."
           test -f README.md || (echo "❌ Missing README.md" && exit 1)
-          test -f OPTIMIZATIONS.md || (echo "❌ Missing OPTIMIZATIONS.md" && exit 1)
-          test -f ARENA_ALLOCATOR_PATTERN.md || (echo "❌ Missing ARENA_ALLOCATOR_PATTERN.md" && exit 1)
-          test -f MEMORY_STRESS_TEST.md || (echo "❌ Missing MEMORY_STRESS_TEST.md" && exit 1)
+          test -f documentation/OPTIMIZATIONS.md || (echo "❌ Missing documentation/OPTIMIZATIONS.md" && exit 1)
+          test -f documentation/ARENA_ALLOCATOR_PATTERN.md || (echo "❌ Missing documentation/ARENA_ALLOCATOR_PATTERN.md" && exit 1)
+          test -f documentation/MEMORY_STRESS_TEST.md || (echo "❌ Missing documentation/MEMORY_STRESS_TEST.md" && exit 1)
+          test -f documentation/CHANGELOG.md || (echo "❌ Missing documentation/CHANGELOG.md" && exit 1)
           echo "✅ All required documentation files present"
 
       - name: Check for TODO/FIXME comments

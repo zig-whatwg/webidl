@@ -220,18 +220,18 @@ jobs:
           echo "Checking release readiness..."
           
           # Check if CHANGELOG.md exists and is up to date
-          if [ ! -f CHANGELOG.md ]; then
-            echo "⚠️ CHANGELOG.md not found"
+          if [ ! -f documentation/CHANGELOG.md ]; then
+            echo "⚠️ documentation/CHANGELOG.md not found"
           else
-            echo "✅ CHANGELOG.md exists"
+            echo "✅ documentation/CHANGELOG.md exists"
           fi
           
           # Check documentation completeness
           for doc in OPTIMIZATIONS.md ARENA_ALLOCATOR_PATTERN.md MEMORY_STRESS_TEST.md; do
-            if [ -f "$doc" ]; then
-              echo "✅ $doc exists"
+            if [ -f "documentation/$doc" ]; then
+              echo "✅ documentation/$doc exists"
             else
-              echo "⚠️ $doc not found"
+              echo "⚠️ documentation/$doc not found"
             fi
           done
 
