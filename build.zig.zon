@@ -34,7 +34,8 @@
     .dependencies = .{
         // WHATWG Infra Standard implementation
         .infra = .{
-            .path = "../infra",
+            .url = "https://github.com/zig-whatwg/infra/archive/refs/tags/v0.1.0.tar.gz",
+            .hash = "122055f2238eb11e57bb6d6559f952fe447cbb12fe24a8f08b8ec961a6cb55ba126a",
         },
     },
     // Specifies the set of files and directories that are included in this package.
