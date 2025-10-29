@@ -1,7 +1,6 @@
 # WHATWG WebIDL for Zig
 
 ![CI](https://github.com/zig-whatwg/webidl/actions/workflows/ci.yml/badge.svg)
-![Nightly](https://github.com/zig-whatwg/webidl/actions/workflows/nightly.yml/badge.svg)
 
 Production-ready runtime support library for WebIDL bindings in Zig, providing type conversions, error handling, and wrapper types for WHATWG specifications.
 
