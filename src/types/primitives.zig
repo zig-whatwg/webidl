@@ -199,6 +199,43 @@ pub fn toUnsignedShortClamped(value: JSValue) u16 {
     return @intFromFloat(x);
 }
 
+pub fn toUnsignedLong(value: JSValue) !u32 {
+    // FAST PATH: If already a number and in valid u32 range, return directly
+    if (value == .number) {
+        const x = value.number;
+        if (!std.math.isNan(x) and !std.math.isInf(x)) {
+            const int_x = integerPart(x);
+            if (int_x >= 0.0 and int_x <= 4294967295.0) {
+                return @intFromFloat(int_x);
+            }
+        }
+    }
+
+    // SLOW PATH: Full conversion logic
+    var x = value.toNumber();
+    if (x == 0.0 and std.math.signbit(x)) x = 0.0;
+    if (std.math.isNan(x) or x == 0.0 or std.math.isInf(x)) return 0;
+    x = integerPart(x);
+    x = @mod(x, 4294967296.0);
+    return @intFromFloat(x);
+}
+
+pub fn toUnsignedLongEnforceRange(value: JSValue) !u32 {
+    var x = value.toNumber();
+    if (std.math.isNan(x) or std.math.isInf(x)) return error.TypeError;
+    x = integerPart(x);
+    if (x < 0.0 or x > 4294967295.0) return error.TypeError;
+    return @intFromFloat(x);
+}
+
+pub fn toUnsignedLongClamped(value: JSValue) u32 {
+    var x = value.toNumber();
+    if (std.math.isNan(x)) return 0;
+    x = @min(@max(x, 0.0), 4294967295.0);
+    x = @round(x);
+    return @intFromFloat(x);
+}
+
 pub fn toLongLong(value: JSValue) !i64 {
     var x = value.toNumber();
     if (x == 0.0 and std.math.signbit(x)) x = 0.0;
@@ -311,6 +348,49 @@ test "toUnsignedShortEnforceRange" {
 test "toUnsignedShortClamped" {
     try testing.expectEqual(@as(u16, 65535), toUnsignedShortClamped(JSValue{ .number = 99999.0 }));
     try testing.expectEqual(@as(u16, 0), toUnsignedShortClamped(JSValue{ .number = -100.0 }));
+}
+
+test "toUnsignedLong - basic conversion" {
+    try testing.expectEqual(@as(u32, 42), try toUnsignedLong(JSValue{ .number = 42.0 }));
+    try testing.expectEqual(@as(u32, 1000000), try toUnsignedLong(JSValue{ .number = 1000000.0 }));
+    try testing.expectEqual(@as(u32, 0), try toUnsignedLong(JSValue{ .number = std.math.nan(f64) }));
+    // Negative numbers wrap around (modulo 2^32)
+    try testing.expectEqual(@as(u32, 4294967295), try toUnsignedLong(JSValue{ .number = -1.0 }));
+}
+
+test "toUnsignedLong - fast path" {
+    // Fast path for values already in range
+    try testing.expectEqual(@as(u32, 255), try toUnsignedLong(JSValue{ .number = 255.0 }));
+    try testing.expectEqual(@as(u32, 0xFFFFFF), try toUnsignedLong(JSValue{ .number = 0xFFFFFF }));
+}
+
+test "toUnsignedLongEnforceRange - valid values" {
+    try testing.expectEqual(@as(u32, 100), try toUnsignedLongEnforceRange(JSValue{ .number = 100.0 }));
+    try testing.expectEqual(@as(u32, 4294967295), try toUnsignedLongEnforceRange(JSValue{ .number = 4294967295.0 }));
+}
+
+test "toUnsignedLongEnforceRange - throws on invalid" {
+    try testing.expectError(error.TypeError, toUnsignedLongEnforceRange(JSValue{ .number = -1.0 }));
+    try testing.expectError(error.TypeError, toUnsignedLongEnforceRange(JSValue{ .number = 4294967296.0 }));
+    try testing.expectError(error.TypeError, toUnsignedLongEnforceRange(JSValue{ .number = std.math.nan(f64) }));
+    try testing.expectError(error.TypeError, toUnsignedLongEnforceRange(JSValue{ .number = std.math.inf(f64) }));
+}
+
+test "toUnsignedLongClamped - clamps values" {
+    try testing.expectEqual(@as(u32, 42), toUnsignedLongClamped(JSValue{ .number = 42.0 }));
+    try testing.expectEqual(@as(u32, 0), toUnsignedLongClamped(JSValue{ .number = -100.0 }));
+    try testing.expectEqual(@as(u32, 4294967295), toUnsignedLongClamped(JSValue{ .number = 5000000000.0 }));
+    try testing.expectEqual(@as(u32, 0), toUnsignedLongClamped(JSValue{ .number = std.math.nan(f64) }));
+}
+
+test "toUnsignedLong - DOM/Canvas use cases" {
+    // Typical DOM use cases
+    try testing.expectEqual(@as(u32, 0), try toUnsignedLong(JSValue{ .number = 0.0 })); // childNodes.length
+    try testing.expectEqual(@as(u32, 1920), try toUnsignedLong(JSValue{ .number = 1920.0 })); // canvas.width
+    try testing.expectEqual(@as(u32, 1080), try toUnsignedLong(JSValue{ .number = 1080.0 })); // canvas.height
+
+    // RGBA color values
+    try testing.expectEqual(@as(u32, 0xFF336699), try toUnsignedLong(JSValue{ .number = 0xFF336699 }));
 }
 
 test "toLongLong" {

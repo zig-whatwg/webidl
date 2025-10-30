@@ -61,6 +61,9 @@ pub const observable_arrays = @import("types/observable_arrays.zig");
 pub const maplike = @import("types/maplike.zig");
 pub const setlike = @import("types/setlike.zig");
 pub const iterables = @import("types/iterables.zig");
+pub const async_sequences = @import("types/async_sequences.zig");
+pub const namespaces = @import("types/namespaces.zig");
+pub const constants = @import("types/constants.zig");
 pub const extended_attrs = @import("extended_attrs.zig");
 pub const wrappers = @import("wrappers.zig");
 
@@ -113,6 +116,18 @@ pub const Setlike = setlike.Setlike;
 pub const ValueIterable = iterables.ValueIterable;
 pub const PairIterable = iterables.PairIterable;
 pub const AsyncIterable = iterables.AsyncIterable;
+
+// Re-export async sequence type
+pub const AsyncSequence = async_sequences.AsyncSequence;
+
+// Re-export namespace helper
+pub const Namespace = namespaces.Namespace;
+
+// Re-export constant helper
+pub const Constant = constants.Constant;
+pub const NodeType = constants.NodeType;
+pub const DocumentPosition = constants.DocumentPosition;
+pub const XHRReadyState = constants.XHRReadyState;
 
 test {
     std.testing.refAllDecls(@This());
