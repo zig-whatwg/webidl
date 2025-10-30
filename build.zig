@@ -100,6 +100,26 @@ pub fn build(b: *std.Build) void {
     // by passing `--prefix` or `-p`.
     b.installArtifact(exe);
 
+    // WebIDL Parser executable
+    const parser_exe = b.addExecutable(.{
+        .name = "webidl-parser",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/parser/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    b.installArtifact(parser_exe);
+
+    // Parser run step
+    const parser_run_cmd = b.addRunArtifact(parser_exe);
+    parser_run_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        parser_run_cmd.addArgs(args);
+    }
+    const parser_run_step = b.step("parser", "Run the WebIDL parser");
+    parser_run_step.dependOn(&parser_run_cmd.step);
+
     // This creates a top level step. Top level steps have a name and can be
     // invoked by name when running `zig build` (e.g. `zig build run`).
     // This will evaluate the `run` step rather than the default step.
@@ -146,12 +166,23 @@ pub fn build(b: *std.Build) void {
     // A run step that will run the second test executable.
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
+    // Parser tests
+    const parser_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/parser/test.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_parser_tests = b.addRunArtifact(parser_tests);
+
     // A top level step for running all tests. dependOn can be called multiple
     // times and since the two run steps do not depend on one another, this will
     // make the two of them run in parallel.
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+    test_step.dependOn(&run_parser_tests.step);
 
     // Memory stress test - 2 minute benchmark that verifies zero memory leaks
     const memory_stress = b.addExecutable(.{

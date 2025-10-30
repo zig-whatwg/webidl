@@ -1,0 +1,21 @@
+{
+  "definitions": [
+    {
+      "interface": {
+        "name": "HTMLModelElement",
+        "inherits": "HTMLElement",
+        "partial": false,
+        "extended_attributes": [
+          {
+            "name": "Exposed",
+            "value": {
+              "identifier": "Window"
+            }
+          }
+        ],
+        "members": [
+        ]
+      }
+    }
+  ]
+}

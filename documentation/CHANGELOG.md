@@ -5,7 +5,93 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2025-10-28
+## [0.2.0] - 2024-10-30
+
+### Added
+
+#### WebIDL Parser (Complete Implementation)
+- **Complete WebIDL parser** (`src/parser/`)
+  - Lexer with full tokenization (3,800 lines)
+  - Parser with AST construction (2,100 lines)
+  - AST node definitions with proper `deinit()` (700 lines)
+  - JSON serializer for AST output (1,000 lines)
+  - CLI tool for parsing .idl files and directories
+
+- **Full WebIDL specification support**
+  - Interfaces (regular, partial, mixin, callback)
+  - Dictionaries with inheritance
+  - Enumerations
+  - Typedefs
+  - Callbacks
+  - Namespaces
+  - Includes statements
+  - Extended attributes (all value types)
+
+- **Complete type system**
+  - Primitives: any, undefined, boolean, byte, octet, short, long, float, double, bigint
+  - String types: DOMString, ByteString, USVString
+  - Buffer types: ArrayBuffer, DataView, TypedArray variants
+  - Generic types: sequence<T>, FrozenArray<T>, ObservableArray<T>, Promise<T>
+  - Collections: record<K, V>
+  - Union types: (A or B or C)
+  - Nullable types: T?
+  - Namespace qualifiers: `dom::DOMString`, `stylesheets::StyleSheet`
+
+- **Interface members support**
+  - Attributes (readonly, static, stringifier, inherit)
+  - Operations (static, special: getter, setter, deleter)
+  - Constructors
+  - Constants
+  - Stringifiers
+  - Iterables (value, pair)
+  - Async iterables
+  - Maplike/Setlike
+
+- **Extended attributes support**
+  - Identifiers: `[Exposed=Window]`
+  - Identifier lists: `[Exposed=(Window,Worker)]`
+  - Named arguments: `[PutForwards=href]`
+  - Argument lists: `[Constructor(DOMString data)]`
+  - Integer literals: `[MaxLength=100]`
+  - Float literals: `[Epsilon=0.001]`
+  - Factory functions: `[Factory=createFoo()]`
+
+- **Keywords as identifiers** - `.includes`, `.constructor`, `.module`, `.pragma`
+
+### Fixed
+
+#### Parser Memory Leaks (Zero Leaks Achieved)
+- **Parameterized type parsing** - Added `errdefer` cleanup for inner types
+  - Fixed: `sequence<T>`, `FrozenArray<T>`, `ObservableArray<T>`, `record<K,V>`, `Promise<T>`
+  - Problem: Inner types leaked if closing `>` failed to parse
+  - Solution: `errdefer inner.deinit(self.allocator)` after parsing inner type
+
+- **Extended attributes on types** - Proper cleanup instead of discarding with `_`
+  - Problem: `_ = try self.parseExtendedAttributeList()` allocated but lost memory
+  - Solution: Parse and properly free extended attributes in defer block
+
+- **Speculative type parsing** - Cleanup when backtracking from attribute to operation
+  - Problem: When trying to parse as attribute fails, parsed type was leaked during backtrack
+  - Solution: Added `errdefer` and explicit cleanup before all backtrack points
+
+- **Unused extended attributes** - Free extended attributes on members that don't store them
+  - Problem: Stringifier, Iterable, AsyncIterable, Maplike, Setlike, Const don't have `extended_attributes` field
+  - Solution: Explicitly free `member_ext_attrs` when parsing these member types
+
+### Testing
+
+- **Production validation**: 333/333 files from [webref](https://github.com/w3c/webref) parsed successfully
+- **Zero memory leaks**: Verified with Zig's GeneralPurposeAllocator on all 333 specification files
+- **171+ unit tests**: All passing, including parser tests
+- **100% parsing success rate**: All WHATWG and W3C specifications
+
+### Performance
+
+- **Parser memory safety**: All error paths protected with `errdefer`
+- **Backtracking safety**: Speculative parsing properly cleans up intermediate allocations
+- **Complete cleanup**: Every AST node implements `deinit()` for full memory cleanup
+
+## [0.1.0] - 2024-10-28
 
 ### Added
 

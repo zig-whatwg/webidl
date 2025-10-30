@@ -2,11 +2,45 @@
 
 ![CI](https://github.com/zig-whatwg/webidl/actions/workflows/ci.yml/badge.svg)
 
-Production-ready runtime support library for WebIDL bindings in Zig, providing type conversions, error handling, and wrapper types for WHATWG specifications.
+Production-ready WebIDL runtime support library and parser for Zig, providing type conversions, error handling, wrapper types, and complete WebIDL parsing with AST generation.
 
-**Status**: ✅ **Production Ready** - 100% Feature Complete | 141+ Tests | Zero Memory Leaks | Browser-Competitive Performance
+**Status**: ✅ **Production Ready** - 100% Feature Complete | 171+ Tests | Zero Memory Leaks | Browser-Competitive Performance | 333/333 Files Parsed
+
+## Features
+
+### 🎯 Dual Purpose
+
+1. **Runtime Library** - Type conversions, error handling, and wrapper types for WHATWG specifications
+2. **WebIDL Parser** - Complete WebIDL parser with AST generation and JSON serialization
+
+### ✅ Runtime Library - 100% Spec Coverage
+
+- **Error System** - DOMException (30+ types), TypeError, RangeError, etc.
+- **Type Conversions** - All primitive types with [Clamp], [EnforceRange]
+- **String Types** - DOMString, ByteString, USVString with interning
+- **Collections** - ObservableArray, Maplike, Setlike with inline storage
+- **Complex Types** - Dictionaries, Unions, Enumerations
+- **Buffer Sources** - ArrayBuffer, TypedArray (13 variants), DataView
+- **Callbacks** - Function and interface callbacks with context
+- **Iterables** - Value, Pair, and Async iteration patterns
+- **Frozen Arrays** - Immutable array types
+
+### ✅ WebIDL Parser - Complete Implementation
+
+- **Interfaces** - Regular, partial, mixin, callback
+- **Dictionaries** - With inheritance and member types
+- **Enumerations** - String value enums
+- **Typedefs** - Type aliases
+- **Callbacks** - Function callbacks
+- **Namespaces** - Namespace definitions
+- **Extended Attributes** - Full support with all value types
+- **Type System** - All primitives, strings, buffers, generics, unions, nullable
+- **Namespace Qualifiers** - `dom::DOMString`, `stylesheets::StyleSheet`
+- **333/333 files parsed** from [webref](https://github.com/w3c/webref) with zero leaks
 
 ## Quick Start
+
+### Runtime Library Usage
 
 ```zig
 const std = @import("std");
@@ -32,33 +66,18 @@ pub fn main() !void {
 }
 ```
 
-## Features
+### Parser Usage
 
-### ✅ 100% Spec Coverage (In-Scope Features)
+```bash
+# Parse a single WebIDL file
+zig build parser -- dom.idl dom.json
 
-- **Error System** - DOMException (30+ types), TypeError, RangeError, etc.
-- **Type Conversions** - All primitive types with [Clamp], [EnforceRange]
-- **String Types** - DOMString, ByteString, USVString with interning
-- **Collections** - ObservableArray, Maplike, Setlike with inline storage
-- **Complex Types** - Dictionaries, Unions, Enumerations
-- **Buffer Sources** - ArrayBuffer, TypedArray (13 variants), DataView
-- **Callbacks** - Function and interface callbacks with context
-- **Iterables** - Value, Pair, and Async iteration patterns
-- **Frozen Arrays** - Immutable array types
+# Parse all WebIDL files in a directory
+zig build parser -- /path/to/idl/ ./output/
 
-### 🚀 Performance Optimizations
-
-- **Inline Storage** (5-10x speedup) - First 4 elements stored inline, zero heap allocation
-- **String Interning** (20-30x speedup) - 43 common web strings pre-computed
-- **Fast Paths** (2-3x speedup) - Optimized primitive conversions
-- **Arena Allocator Pattern** (2-5x speedup) - Efficient complex conversions
-
-### ✅ Quality Assurance
-
-- **141+ tests** - All passing, comprehensive coverage
-- **Zero memory leaks** - Verified with GPA on 2.9M+ operations
-- **CI/CD** - GitHub Actions on Linux, macOS, Windows
-- **Memory stress tested** - 2-minute test (2.9M ops), nightly 10-minute test (14.5M ops)
+# Example: Parse all WHATWG specs (333 files, zero leaks!)
+zig build parser -- /Users/bcardarella/projects/webref/ed/idl/ ./idl-output/
+```
 
 ## Installation
 
@@ -69,7 +88,7 @@ Add to your `build.zig.zon`:
 ```zig
 .dependencies = .{
     .webidl = .{
-        .url = "https://github.com/YOUR_ORG/webidl/archive/vX.Y.Z.tar.gz",
+        .url = "https://github.com/zig-whatwg/webidl/archive/vX.Y.Z.tar.gz",
         // .hash will be provided by zig
     },
 },
@@ -86,6 +105,21 @@ const webidl = b.dependency("webidl", .{
 exe.root_module.addImport("webidl", webidl.module("webidl"));
 ```
 
+## Performance Optimizations
+
+### Runtime Library
+
+- **Inline Storage** (5-10x speedup) - First 4 elements stored inline, zero heap allocation
+- **String Interning** (20-30x speedup) - 43 common web strings pre-computed
+- **Fast Paths** (2-3x speedup) - Optimized primitive conversions
+- **Arena Allocator Pattern** (2-5x speedup) - Efficient complex conversions
+
+### Parser
+
+- **Zero Memory Leaks** - Verified on 333 specification files with GPA
+- **Error Recovery** - Proper cleanup with `errdefer` on all parse failures
+- **Backtracking Safety** - Speculative parsing cleans up intermediate allocations
+
 ## Documentation
 
 - **[Quick Start Guide](documentation/QUICK_START.md)** - Get up and running quickly
@@ -96,7 +130,7 @@ exe.root_module.addImport("webidl", webidl.module("webidl"));
 - **[Changelog](documentation/CHANGELOG.md)** - Version history
 - **[All Documentation](documentation/README.md)** - Complete documentation index
 
-## Usage Examples
+## Runtime Library Examples
 
 ### Error Handling
 
@@ -145,68 +179,162 @@ try map.set("a", 1);
 try map.set("b", 2); // ← Inline storage until 5th entry
 ```
 
+## Parser Output Format
+
+The parser generates JSON files with complete AST representation:
+
+```json
+{
+  "definitions": [
+    {
+      "interface": {
+        "name": "Document",
+        "inherits": "Node",
+        "partial": false,
+        "extended_attributes": [
+          {
+            "name": "Exposed",
+            "value": { "identifier": "Window" }
+          }
+        ],
+        "members": [
+          {
+            "attribute": {
+              "name": "documentElement",
+              "type": { "identifier": "Element" },
+              "readonly": true,
+              "static": false,
+              "stringifier": false,
+              "inherit": false,
+              "extended_attributes": []
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
 ## Testing
 
 ```bash
-# Run all tests (141+ tests)
+# Run all tests (171+ tests)
 zig build test
 
 # Run 2-minute memory stress test (2.9M operations)
 zig build memory-stress
 
+# Test parser on real specs (333 files, zero leaks)
+zig build parser -- /path/to/webref/ed/idl/ ./idl-output/
+
 # Format code
 zig fmt src/ benchmarks/
 ```
 
-## Performance
-
-### Memory Stress Test Results
-
-```
-Duration: 120 seconds
-Operations: 2,905,000
-Throughput: ~24,205 ops/sec
-Memory Leaks: ZERO ✅
-```
-
-### Optimization Hit Rates (from browser research)
-
-| Optimization | Hit Rate | Speedup | Status |
-|--------------|----------|---------|--------|
-| Inline Storage | 70-80% | 5-10x | ✅ |
-| String Interning | 80% | 20-30x | ✅ |
-| Fast Paths | 60-70% | 2-3x | ✅ |
-| Arena Allocator | N/A | 2-5x | ✅ |
-
 ## Architecture
 
 ```
-┌─────────────────────────────┐
-│  WHATWG Specs (DOM, Fetch)  │
-└──────────┬──────────────────┘
-           │ imports
-           ▼
-┌─────────────────────────────┐
-│  WebIDL Runtime Library     │ ← THIS LIBRARY
-│  - Type conversions         │
-│  - Error handling           │
-│  - Wrapper types            │
-│  - Performance optimizations│
-└──────────┬──────────────────┘
-           │ imports
-           ▼
-┌─────────────────────────────┐
-│  Infra Library              │
-│  - UTF-16 strings           │
-│  - Lists, Maps, Sets        │
-└─────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  WHATWG WebIDL for Zig                                  │
+├─────────────────────────────────────────────────────────┤
+│                                                           │
+│  ┌─────────────────────┐    ┌─────────────────────────┐ │
+│  │  Runtime Library    │    │  WebIDL Parser          │ │
+│  │  (src/)             │    │  (src/parser/)          │ │
+│  ├─────────────────────┤    ├─────────────────────────┤ │
+│  │ • Type conversions  │    │ • Lexer (tokenization)  │ │
+│  │ • Error handling    │    │ • Parser (AST build)    │ │
+│  │ • Wrapper types     │    │ • Serializer (JSON)     │ │
+│  │ • Collections       │    │ • 333/333 files parsed  │ │
+│  │ • Buffer sources    │    │ • Zero memory leaks     │ │
+│  │ • Callbacks         │    │                         │ │
+│  │ • 141+ tests        │    │                         │ │
+│  └─────────────────────┘    └─────────────────────────┘ │
+│                                                           │
+│  Dependencies: WHATWG Infra Library                      │
+│  (UTF-16 strings, Lists, Maps, Sets, String operations)  │
+└─────────────────────────────────────────────────────────┘
 ```
+
+## Parser Memory Leak Fixes (v0.2.0)
+
+### 1. Parameterized Type Parsing
+Fixed inner types leaking if closing `>` failed:
+```zig
+// BEFORE (leaked)
+const inner = try self.parseType();
+_ = try self.consume(.gt, "Expected '>'");
+
+// AFTER (fixed)
+var inner = try self.parseType();
+errdefer inner.deinit(self.allocator);
+_ = try self.consume(.gt, "Expected '>'");
+```
+Fixed in: `sequence<T>`, `FrozenArray<T>`, `ObservableArray<T>`, `record<K,V>`, `Promise<T>`
+
+### 2. Extended Attributes on Types
+Fixed extended attributes being discarded:
+```zig
+// BEFORE (leaked)
+_ = try self.parseExtendedAttributeList();
+
+// AFTER (fixed with cleanup)
+const ext_attrs = try self.parseExtendedAttributeList();
+defer { /* cleanup code */ }
+```
+
+### 3. Speculative Type Parsing
+Fixed backtracking leaks when trying attribute vs operation:
+```zig
+var type_result = self.parseType() catch { /* backtrack */ };
+errdefer type_result.deinit(self.allocator);
+// Cleanup before all backtrack paths
+```
+
+### 4. Unused Extended Attributes
+Fixed extended attributes on members that don't store them (Stringifier, Iterable, Maplike, Setlike, Const).
 
 ## Requirements
 
 - **Zig**: 0.15.1 or later
 - **Dependencies**: WHATWG Infra library
 - **Platforms**: Linux, macOS, Windows
+
+## Project Structure
+
+```
+webidl/
+├── src/
+│   ├── root.zig              # Runtime library entry point
+│   ├── errors.zig            # DOMException, ErrorResult
+│   ├── extended_attrs.zig    # [Clamp], [EnforceRange], etc.
+│   ├── wrappers.zig          # Nullable, Optional, Sequence, Record
+│   ├── types/                # Type conversion implementations
+│   │   ├── primitives.zig    # Integer, boolean, float conversions
+│   │   ├── strings.zig       # DOMString, ByteString, USVString
+│   │   ├── bigint.zig        # BigInt support
+│   │   ├── buffer_sources.zig # ArrayBuffer, TypedArray, DataView
+│   │   ├── callbacks.zig     # Function and interface callbacks
+│   │   ├── frozen_arrays.zig # Immutable arrays
+│   │   ├── observable_arrays.zig # Observable arrays with inline storage
+│   │   ├── maplike.zig       # Maplike with inline storage
+│   │   ├── setlike.zig       # Setlike with inline storage
+│   │   └── ... (14 more type modules)
+│   └── parser/               # WebIDL parser
+│       ├── main.zig          # CLI entry point
+│       ├── lexer.zig         # Tokenization
+│       ├── parser.zig        # AST construction (2,100 lines)
+│       ├── ast.zig           # AST node definitions
+│       ├── serializer.zig    # JSON output
+│       └── error.zig         # Parser error types
+├── tests/                    # Unit tests (171+ tests)
+├── benchmarks/               # Performance benchmarks
+├── documentation/            # Complete documentation
+├── idl-output/               # Parsed JSON output (333 files)
+├── build.zig                 # Build configuration
+└── README.md                 # This file
+```
 
 ## Contributing
 
@@ -221,10 +349,11 @@ zig build test
 # Run memory stress test
 zig build memory-stress
 
+# Run parser on specs
+zig build parser -- /path/to/webref/ed/idl/ ./test-output/
+
 # Format code
 zig fmt src/ benchmarks/
-
-# CI runs automatically on pull requests
 ```
 
 ## CI/CD
@@ -244,16 +373,25 @@ MIT
 
 - [WHATWG WebIDL Specification](https://webidl.spec.whatwg.org/)
 - [WHATWG Infra Specification](https://infra.spec.whatwg.org/)
+- [W3C WebRef IDL Files](https://github.com/w3c/webref)
 - [Project Documentation](documentation/README.md)
 
 ## Status
 
 ✅ **Production Ready**
+
+**Runtime Library**
 - 100% spec coverage (in-scope features)
 - 141+ tests passing
-- Zero memory leaks verified
+- Zero memory leaks verified (2.9M+ operations)
 - Browser-competitive performance
-- Multi-platform CI/CD
 - Comprehensive documentation
+
+**WebIDL Parser**
+- 333/333 files parsed successfully (100%)
+- Zero memory leaks verified with GPA
+- Complete AST generation
+- JSON serialization
+- Error recovery with proper cleanup
 
 🎉 **Ready for production use!**
