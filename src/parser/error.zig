@@ -17,17 +17,9 @@ pub fn reportError(
     comptime fmt: []const u8,
     args: anytype,
 ) void {
-    const allocator = std.heap.page_allocator;
-    const stderr = std.fs.File{ .handle = std.posix.STDERR_FILENO };
-
-    const header = std.fmt.allocPrint(allocator, "{s}:{}:{}: error: ", .{ filename, token.line, token.column }) catch return;
-    defer allocator.free(header);
-    stderr.writeAll(header) catch return;
-
-    const msg = std.fmt.allocPrint(allocator, fmt, args) catch return;
-    defer allocator.free(msg);
-    stderr.writeAll(msg) catch return;
-    stderr.writeAll("\n") catch return;
+    std.debug.print("{s}:{}:{}: error: ", .{ filename, token.line, token.column });
+    std.debug.print(fmt, args);
+    std.debug.print("\n", .{});
 }
 
 pub fn reportErrorSimple(
@@ -35,9 +27,5 @@ pub fn reportErrorSimple(
     token: Token,
     message: []const u8,
 ) void {
-    const allocator = std.heap.page_allocator;
-    const stderr = std.fs.File{ .handle = std.posix.STDERR_FILENO };
-    const msg = std.fmt.allocPrint(allocator, "{s}:{}:{}: error: {s}\n", .{ filename, token.line, token.column, message }) catch return;
-    defer allocator.free(msg);
-    stderr.writeAll(msg) catch return;
+    std.debug.print("{s}:{}:{}: error: {s}\n", .{ filename, token.line, token.column, message });
 }

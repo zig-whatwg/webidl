@@ -94,8 +94,7 @@ fn processDirectory(allocator: std.mem.Allocator, input_dir: []const u8, output_
 }
 
 fn printUsage() !void {
-    const stderr = std.fs.File{ .handle = std.posix.STDERR_FILENO };
-    try stderr.writeAll(
+    std.debug.print(
         \\Usage: webidl-parser <input> <output>
         \\
         \\  <input>   Input .idl file or directory containing .idl files
@@ -112,5 +111,6 @@ fn printUsage() !void {
         \\  The parser generates JSON files (.json) containing the complete AST
         \\  representation of the WebIDL definitions.
         \\
-    );
+        \\
+    , .{});
 }
