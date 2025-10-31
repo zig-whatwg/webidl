@@ -1,537 +1,372 @@
-# WHATWG Infra Specification Compliance Skill
+# WHATWG WebIDL Specification Compliance Skill
 
 ## When to use this skill
 
 Load this skill automatically when:
-- Implementing Infra algorithms or data structures
-- Understanding Infra type definitions
-- Verifying spec compliance for primitives
-- Mapping Infra types to Zig types
+- Implementing WebIDL type conversions or runtime features
+- Understanding WebIDL data type definitions
+- Verifying spec compliance for type conversion operations
+- Mapping WebIDL concepts to Zig types
 - Checking algorithm correctness
+- Implementing parser features
 
 ## What this skill provides
 
-This skill contains the complete, authoritative WHATWG Infra specification - NOT fragments or grep results. Read specifications holistically to understand:
+This skill provides **Zig implementation patterns** for WHATWG WebIDL Standard concepts:
 
-- Complete algorithm specifications with all steps
-- Data structure definitions and operations
-- Primitive type definitions and constraints
-- Edge cases documented in related sections
-- Cross-references between algorithms
+- How to map WebIDL spec types to Zig types (boolean → bool, long → i32, DOMString → []const u16)
+- Complete implementation examples with numbered steps matching spec
+- Documentation patterns with WebIDL spec references
+- Memory management patterns for WebIDL types
+- Parser implementation patterns for IDL constructs
+
+**For the actual spec**: Read `specs/webidl.md` (see whatwg_spec skill)
+
+**This skill**: Shows HOW to implement spec concepts in idiomatic Zig
 
 ---
 
-## What is the WHATWG Infra Standard?
+## What is the WHATWG WebIDL Standard?
 
 ### Official Specification
 
-**URL**: https://infra.spec.whatwg.org/
+**WebIDL**: https://webidl.spec.whatwg.org/
 
-**Purpose**: "The Infra Standard aims to define the fundamental concepts upon which standards are built."
+**Purpose**: "Web IDL is an interface definition language (IDL) that can be used to describe interfaces for APIs in the Web platform."
 
 ### Scope
 
-The Infra Standard defines:
+The WebIDL Standard defines:
 
-1. **§3 Algorithms** - Algorithm declaration patterns, control flow, assertions
-2. **§4 Primitive Data Types** - Nulls, booleans, numbers, bytes, strings, code points
-3. **§5 Data Structures** - Lists, ordered maps, ordered sets, stacks, queues, structs, tuples
-4. **§6 JSON** - Parsing and serialization between JSON and Infra values
-5. **§7 Forgiving Base64** - Forgiving encoding and decoding
-6. **§8 Namespaces** - HTML, MathML, SVG, XLink, XML, XMLNS namespace URIs
+1. **§2 IDL Grammar** - Interfaces, dictionaries, enums, typedefs, extended attributes
+2. **§3 ECMAScript Binding** - JavaScript bindings for IDL constructs
+3. **§3.2 Type Conversions** - ToInt32, ToDouble, ToString, etc.
+4. **§2.8 Error Handling** - DOMException types and error propagation
+5. **§2.9 Buffer Sources** - ArrayBuffer, DataView, TypedArray
+6. **§2.10 Observables** - ObservableArray, Maplike, Setlike
 
-### What Infra Does NOT Define
+### What WebIDL Does NOT Define
 
-❌ **NO DOM** - No nodes, elements, documents, tree structures
-❌ **NO HTML** - No HTML-specific parsing or semantics
-❌ **NO Web APIs** - No browser interfaces or behaviors
-❌ **NO Domain Logic** - Pure primitives only
+❌ **NO JavaScript engine** - Just type conversion abstractions
+❌ **NO code generation** - Just IDL syntax and semantics
+❌ **NO Infra primitives** - WebIDL depends on Infra (separate library)
 
-### Why Infra Matters
+### Why WebIDL Matters
 
-Infra is the **foundation layer** for web specifications:
-- **DOM Standard** uses Infra lists, strings, and algorithms
-- **Fetch Standard** uses Infra maps, bytes, and JSON
-- **URL Standard** uses Infra strings, code points, and parsing algorithms
+WebIDL is **critical for web compatibility**:
+- **DOM Standard** uses WebIDL for all interfaces (Element, Document, Event)
+- **Fetch Standard** uses WebIDL for Request, Response, Headers
+- **URL Standard** uses WebIDL for URL, URLSearchParams
+- **Streams Standard** uses WebIDL for ReadableStream, WritableStream
 
-**Precision is critical**: If Infra deviates from spec, dependent specs break.
+**Precision is critical**: All Web APIs depend on consistent WebIDL type conversions.
 
 ---
 
-## Infra → Zig Type Mapping
+## WebIDL → Zig Type Mapping
 
 ### Core Principle
 
-Map Infra types to **idiomatic Zig** equivalents that preserve Infra semantics.
+Map WebIDL types to **idiomatic Zig** types that preserve WebIDL semantics and enable efficient implementation.
 
-### Primitive Types (§4)
+### Primitive Types (§3.2)
 
-| Infra Type | Zig Type | Notes | Spec Reference |
-|------------|----------|-------|----------------|
-| `null` | `null` | Absence of value | §4.1 |
-| `boolean` | `bool` | true/false | §4.2 |
-| `8-bit unsigned integer` | `u8` | 0 to 255 | §4.3 |
-| `16-bit unsigned integer` | `u16` | 0 to 65535 | §4.3 |
-| `32-bit unsigned integer` | `u32` | 0 to 4294967295 | §4.3 |
-| `64-bit unsigned integer` | `u64` | 0 to 2^64-1 | §4.3 |
-| `8-bit signed integer` | `i8` | -128 to 127 | §4.3 |
-| `16-bit signed integer` | `i16` | -32768 to 32767 | §4.3 |
-| `32-bit signed integer` | `i32` | -2^31 to 2^31-1 | §4.3 |
-| `64-bit signed integer` | `i64` | -2^63 to 2^63-1 | §4.3 |
-| `byte` | `u8` | 0x00 to 0xFF | §4.4 |
-| `byte sequence` | `[]const u8` | Sequence of bytes | §4.5 |
-| `code point` | `u21` | U+0000 to U+10FFFF | §4.6 |
-| `string` | `[]const u8` | UTF-8 encoded | §4.7 |
-| `ASCII string` | `[]const u8` | Only ASCII code points | §4.7 |
-| `isomorphic string` | `[]const u8` | U+0000 to U+00FF | §4.7 |
-| `scalar value string` | `[]const u8` | No surrogates | §4.7 |
+| WebIDL Type | Zig Type | Range/Notes | Spec Reference |
+|-------------|----------|-------------|----------------|
+| `boolean` | `bool` | true/false | §3.2.1 |
+| `byte` | `i8` | -128 to 127 | §3.2.3 |
+| `octet` | `u8` | 0 to 255 | §3.2.4 |
+| `short` | `i16` | -32768 to 32767 | §3.2.5 |
+| `unsigned short` | `u16` | 0 to 65535 | §3.2.6 |
+| `long` | `i32` | -2^31 to 2^31-1 | §3.2.7 |
+| `unsigned long` | `u32` | 0 to 2^32-1 | §3.2.8 |
+| `long long` | `i64` | -2^63 to 2^63-1 | §3.2.9 |
+| `unsigned long long` | `u64` | 0 to 2^64-1 | §3.2.10 |
+| `float` | `f32` | IEEE 754 single | §3.2.11 |
+| `double` | `f64` | IEEE 754 double | §3.2.12 |
 
-### Data Structures (§5)
+### String Types (§3.2.13-15)
 
-| Infra Type | Zig Type | Implementation | Spec Reference |
-|------------|----------|----------------|----------------|
-| `list` | `std.ArrayList(T)` | Standard library | §5.1 |
-| `stack` | `std.ArrayList(T)` | List with push/pop | §5.1.1 |
-| `queue` | `std.ArrayList(T)` | List with enqueue/dequeue | §5.1.2 |
-| `ordered set` | `OrderedSet(T)` | Custom (no duplicates, preserves order) | §5.1.3 |
-| `ordered map` | `OrderedMap(K, V)` | Custom (preserves insertion order) | §5.2 |
-| `struct` | `struct { ... }` | Zig struct with named fields | §5.3 |
-| `tuple` | `struct { ... }` | Zig struct (fields accessed by index) | §5.3.1 |
+| WebIDL Type | Zig Type | Notes | Spec Reference |
+|-------------|----------|-------|----------------|
+| `DOMString` | `[]const u16` | UTF-16 code units | §3.2.13 |
+| `ByteString` | `[]const u8` | Byte string (ASCII) | §3.2.14 |
+| `USVString` | `[]const u16` | Unicode scalar values | §3.2.15 |
 
-**Important**: `ordered map` and `ordered set` require **custom implementations** because Zig's stdlib HashMap doesn't preserve insertion order.
+### Buffer Source Types (§2.9)
+
+| WebIDL Type | Zig Type | Notes |
+|-------------|----------|-------|
+| `ArrayBuffer` | `ArrayBuffer` | Binary buffer |
+| `DataView` | `DataView` | View over buffer |
+| `Int8Array` | `TypedArray(i8)` | 8-bit signed |
+| `Uint8Array` | `TypedArray(u8)` | 8-bit unsigned |
+| `Int16Array` | `TypedArray(i16)` | 16-bit signed |
+| `Uint16Array` | `TypedArray(u16)` | 16-bit unsigned |
+| `Int32Array` | `TypedArray(i32)` | 32-bit signed |
+| `Uint32Array` | `TypedArray(u32)` | 32-bit unsigned |
+| `Float32Array` | `TypedArray(f32)` | 32-bit float |
+| `Float64Array` | `TypedArray(f64)` | 64-bit float |
+
+### Wrapper Types
+
+| WebIDL Type | Zig Type | Notes |
+|-------------|----------|-------|
+| `T?` | `Nullable(T)` | Nullable type |
+| `(optional T)` | `Optional(T)` | Optional argument |
+| `sequence<T>` | `Sequence(T)` | Dynamic array |
+| `record<K, V>` | `Record(K, V)` | Ordered map |
+| `(A or B)` | `Union(A, B)` | Union type |
+
+### Collection Types (§2.10)
+
+| WebIDL Type | Zig Type | Notes |
+|-------------|----------|-------|
+| `ObservableArray<T>` | `ObservableArray(T)` | Observable array with change detection |
+| `maplike<K, V>` | `Maplike(K, V)` | Map-like interface |
+| `setlike<T>` | `Setlike(T)` | Set-like interface |
 
 ---
 
-## Infra Algorithm Patterns
+## WebIDL Algorithm Patterns
 
-### Algorithm Declaration (§3.3)
+### Type Conversion (§3.2)
 
-**Infra Pattern**:
-```
-To [algorithm name], given a [type1] [parameter1], a [type2] [parameter2], …,
-perform the following steps. They return a [return type].
-```
+**WebIDL Spec Pattern**:
+Type conversions take JavaScript values and convert to WebIDL types.
 
 **Zig Pattern**:
 ```zig
-/// [Brief description of algorithm purpose]
+/// Converts JavaScript value to WebIDL long (i32).
 ///
-/// Implements WHATWG Infra "[algorithm name]" per §X.Y.
-///
-/// ## Spec Reference
-/// https://infra.spec.whatwg.org/#[section-anchor]
-///
-/// ## Algorithm (Infra §X.Y)
-/// [Paste complete algorithm from spec]
-///
-/// ## Parameters
-/// - `param1`: [Type and description]
-/// - `param2`: [Type and description]
-///
-/// ## Returns
-/// [Description of return value]
-pub fn algorithmName(param1: Type1, param2: Type2) ReturnType {
-    // 1. [First algorithm step from spec]
-    // 2. [Second algorithm step from spec]
-    // ...
-}
-```
-
-### Example: List Append (§5.1)
-
-**Infra Spec**:
-> To append to a list that is not an ordered set is to add the given item to the end of the list.
-
-**Zig Implementation**:
-```zig
-/// Appends an item to the end of a list.
-///
-/// Implements WHATWG Infra "append" operation per §5.1.
+/// Implements WHATWG WebIDL "ToInt32" per §3.2.7.
 ///
 /// ## Spec Reference
-/// https://infra.spec.whatwg.org/#list-append
+/// https://webidl.spec.whatwg.org/#abstract-opdef-converttoint
 ///
-/// ## Algorithm (Infra §5.1)
-/// To append to a list that is not an ordered set is to add the given 
-/// item to the end of the list.
-///
-/// ## Parameters
-/// - `list`: The list to append to (mutable)
-/// - `item`: The item to append
-///
-/// ## Returns
-/// Error if allocation fails, otherwise void.
-pub fn append(list: *std.ArrayList(T), item: T) !void {
-    // To append to a list is to add the given item to the end of the list.
-    try list.append(item);
-}
-```
-
-### Example: Ordered Map Set (§5.2)
-
-**Infra Spec**:
-> To set the value of an entry in an ordered map to a given value is to update the value of any 
-> existing entry if the map contains an entry with the given key, or if none such exists, to add 
-> a new entry with the given key/value to the end of the map.
-
-**Zig Implementation**:
-```zig
-/// Sets the value of an entry in an ordered map.
-///
-/// Implements WHATWG Infra "set" operation per §5.2.
-///
-/// ## Spec Reference
-/// https://infra.spec.whatwg.org/#map-set
-///
-/// ## Algorithm (Infra §5.2)
-/// To set the value of an entry in an ordered map to a given value is to 
-/// update the value of any existing entry if the map contains an entry with 
-/// the given key, or if none such exists, to add a new entry with the given 
-/// key/value to the end of the map.
+/// ## Algorithm (WebIDL §3.2.7)
+/// 1. Let x be ? ToNumber(V).
+/// 2. If x is NaN, +0, −0, +∞, or −∞, return +0.
+/// 3. Let int be the mathematical value with same sign as x, magnitude floor(abs(x)).
+/// 4. Let int32bit be int modulo 2^32.
+/// 5. If int32bit ≥ 2^31, return int32bit − 2^32; otherwise return int32bit.
 ///
 /// ## Parameters
-/// - `map`: The ordered map (mutable)
-/// - `key`: The key (must match key type K)
-/// - `value`: The value to set
+/// - `value`: JavaScript value to convert
 ///
 /// ## Returns
-/// Error if allocation fails, otherwise void.
-pub fn set(map: *OrderedMap(K, V), key: K, value: V) !void {
-    // 1. If map contains key, update existing entry
-    if (map.getIndex(key)) |index| {
-        map.values.items[index] = value;
-        return;
+/// WebIDL long (i32 in Zig).
+pub fn toLong(value: JSValue) !i32 {
+    // 1. Let x be ? ToNumber(V)
+    const x = try toNumber(value);
+    
+    // 2. If x is NaN, +0, −0, +∞, or −∞, return +0
+    if (std.math.isNan(x) or std.math.isInf(x) or x == 0.0) {
+        return 0;
     }
     
-    // 2. Otherwise, add new entry to end
-    try map.keys.append(key);
-    try map.values.append(value);
+    // 3. Let int be the mathematical value...
+    const int = @trunc(x);
+    
+    // 4-5. Modulo and range conversion
+    const int_64: i64 = @intFromFloat(int);
+    const int32bit: i32 = @truncate(int_64);
+    
+    return int32bit;
 }
 ```
 
----
+### Example: ToString (DOMString)
 
-## String Operations (§4.7)
-
-Infra defines many string operations. These are **critical** for spec compliance.
-
-### ASCII Lowercase (§4.7)
-
-**Infra Spec**:
-> To ASCII lowercase a string, replace all ASCII upper alphas in the string with their corresponding code point in ASCII lower alpha.
+**WebIDL Spec**:
+> The ToString(V) operation takes a JavaScript value V and returns a string.
 
 **Zig Implementation**:
 ```zig
-/// Converts ASCII uppercase letters to lowercase.
+/// Converts JavaScript value to WebIDL DOMString.
 ///
-/// Implements WHATWG Infra "ASCII lowercase" per §4.7.
+/// Implements WHATWG WebIDL "ToDOMString" per §3.2.13.
 ///
 /// ## Spec Reference
-/// https://infra.spec.whatwg.org/#ascii-lowercase
+/// https://webidl.spec.whatwg.org/#es-DOMString
 ///
-/// ## Algorithm (Infra §4.7)
-/// To ASCII lowercase a string, replace all ASCII upper alphas in the string 
-/// with their corresponding code point in ASCII lower alpha.
+/// ## Algorithm (WebIDL §3.2.13)
+/// 1. Let S be ? ToString(V).
+/// 2. Convert S to a sequence of 16-bit unsigned integers (UTF-16 code units).
+/// 3. Return the result.
 ///
 /// ## Parameters
 /// - `allocator`: Allocator for result string
-/// - `string`: Input string
+/// - `value`: JavaScript value to convert
 ///
 /// ## Returns
-/// New string with ASCII uppercase converted to lowercase.
-pub fn asciiLowercase(allocator: Allocator, string: []const u8) ![]u8 {
-    const result = try allocator.alloc(u8, string.len);
-    errdefer allocator.free(result);
+/// DOMString as UTF-16 code units ([]const u16).
+pub fn toDOMString(allocator: Allocator, value: JSValue) ![]const u16 {
+    // 1. Let S be ? ToString(V)
+    const str = try toString(value);
     
-    for (string, 0..) |byte, i| {
-        // ASCII upper alpha: U+0041 (A) to U+005A (Z)
-        // ASCII lower alpha: U+0061 (a) to U+007A (z)
-        // Difference: 0x20
-        if (byte >= 'A' and byte <= 'Z') {
-            result[i] = byte + 0x20;
-        } else {
-            result[i] = byte;
-        }
-    }
-    
-    return result;
+    // 2-3. Convert to UTF-16
+    return try utf8ToUtf16(allocator, str);
 }
-```
 
-### Strip Newlines (§4.7)
-
-**Infra Spec**:
-> To strip newlines from a string, remove any U+000A LF and U+000D CR code points from the string.
-
-**Zig Implementation**:
-```zig
-/// Removes newline characters from a string.
-///
-/// Implements WHATWG Infra "strip newlines" per §4.7.
-///
-/// ## Spec Reference
-/// https://infra.spec.whatwg.org/#strip-newlines
-///
-/// ## Algorithm (Infra §4.7)
-/// To strip newlines from a string, remove any U+000A LF and U+000D CR 
-/// code points from the string.
-///
-/// ## Parameters
-/// - `allocator`: Allocator for result string
-/// - `string`: Input string
-///
-/// ## Returns
-/// New string with newlines removed.
-pub fn stripNewlines(allocator: Allocator, string: []const u8) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
+fn utf8ToUtf16(allocator: Allocator, utf8: []const u8) ![]u16 {
+    var result = std.ArrayList(u16).init(allocator);
     errdefer result.deinit();
     
-    for (string) |byte| {
-        // Skip U+000A LF and U+000D CR
-        if (byte != '\n' and byte != '\r') {
-            try result.append(byte);
+    var i: usize = 0;
+    while (i < utf8.len) {
+        const cp_len = try std.unicode.utf8ByteSequenceLength(utf8[i]);
+        const cp = try std.unicode.utf8Decode(utf8[i..][0..cp_len]);
+        
+        if (cp <= 0xFFFF) {
+            try result.append(@intCast(cp));
+        } else {
+            // Surrogate pair for code points > U+FFFF
+            const high = @as(u16, @intCast(0xD800 + ((cp - 0x10000) >> 10)));
+            const low = @as(u16, @intCast(0xDC00 + ((cp - 0x10000) & 0x3FF)));
+            try result.append(high);
+            try result.append(low);
         }
+        
+        i += cp_len;
     }
     
     return result.toOwnedSlice();
 }
 ```
 
----
+### Example: Error Handling (§2.8)
 
-## JSON Operations (§6)
+**WebIDL Spec**:
+> DOMException objects are used to represent errors in Web API operations.
 
-Infra defines algorithms for converting between JSON and Infra values.
-
-### JSON → Infra Value
-
-**Infra defines these value types**:
-- Null → `null`
-- Boolean → `bool`
-- Number → `f64` (JavaScript numbers are IEEE 754 doubles)
-- String → `[]const u8`
-- Array → `list` of Infra values
-- Object → `ordered map` (string keys to Infra values)
-
-**Zig Representation**:
+**Zig Implementation**:
 ```zig
-pub const InfraValue = union(enum) {
-    null_value: void,
-    boolean: bool,
-    number: f64,
-    string: []const u8,
-    list: std.ArrayList(InfraValue),
-    map: OrderedMap([]const u8, InfraValue),
+/// DOMException with proper error propagation.
+///
+/// Implements WHATWG WebIDL "DOMException" per §2.8.
+///
+/// ## Spec Reference
+/// https://webidl.spec.whatwg.org/#idl-DOMException
+pub const ErrorResult = struct {
+    has_exception: bool = false,
+    exception_type: ?DOMExceptionType = null,
+    message: ?[]const u8 = null,
     
-    pub fn deinit(self: InfraValue, allocator: Allocator) void {
-        switch (self) {
-            .string => |s| allocator.free(s),
-            .list => |*l| {
-                for (l.items) |item| {
-                    item.deinit(allocator);
-                }
-                l.deinit();
-            },
-            .map => |*m| {
-                for (m.values.items) |item| {
-                    item.deinit(allocator);
-                }
-                m.deinit();
-            },
-            else => {},
+    /// Throws a DOMException with specified type and message.
+    ///
+    /// ## Parameters
+    /// - `allocator`: Allocator for exception message
+    /// - `exception_type`: Type of DOMException
+    /// - `message`: Error message
+    pub fn throwDOMException(
+        self: *ErrorResult,
+        allocator: Allocator,
+        exception_type: DOMExceptionType,
+        message: []const u8,
+    ) !void {
+        self.has_exception = true;
+        self.exception_type = exception_type;
+        self.message = try allocator.dupe(u8, message);
+    }
+    
+    pub fn deinit(self: *ErrorResult, allocator: Allocator) void {
+        if (self.message) |msg| {
+            allocator.free(msg);
         }
     }
 };
-```
 
-### Parse JSON String to Infra Value (§6)
-
-**Zig Implementation** (simplified - actual would use Zig's JSON parser):
-```zig
-/// Parses a JSON string into an Infra value.
-///
-/// Implements WHATWG Infra "parse JSON string to Infra value" per §6.
-///
-/// ## Spec Reference
-/// https://infra.spec.whatwg.org/#parse-a-json-string-to-an-infra-value
-///
-/// ## Algorithm (Infra §6)
-/// 1. Let jsValue be ? Call(%JSON.parse%, undefined, « string »).
-/// 2. Return the result of converting a JSON-derived JavaScript value to 
-///    an Infra value, given jsValue.
-///
-/// ## Parameters
-/// - `allocator`: Allocator for Infra value
-/// - `json_string`: JSON string to parse
-///
-/// ## Returns
-/// Infra value, or error if JSON is invalid.
-pub fn parseJsonStringToInfraValue(
-    allocator: Allocator,
-    json_string: []const u8,
-) !InfraValue {
-    // Use Zig's std.json parser
-    const parsed = try std.json.parseFromSlice(
-        std.json.Value,
-        allocator,
-        json_string,
-        .{},
-    );
-    defer parsed.deinit();
-    
-    return try convertJsonValueToInfraValue(allocator, parsed.value);
-}
-
-fn convertJsonValueToInfraValue(
-    allocator: Allocator,
-    json_value: std.json.Value,
-) !InfraValue {
-    switch (json_value) {
-        .null => return .{ .null_value = {} },
-        .bool => |b| return .{ .boolean = b },
-        .integer => |i| return .{ .number = @floatFromInt(i) },
-        .float => |f| return .{ .number = f },
-        .number_string => |s| {
-            const f = try std.fmt.parseFloat(f64, s);
-            return .{ .number = f };
-        },
-        .string => |s| {
-            const copy = try allocator.dupe(u8, s);
-            return .{ .string = copy };
-        },
-        .array => |arr| {
-            var list = std.ArrayList(InfraValue).init(allocator);
-            errdefer {
-                for (list.items) |item| {
-                    item.deinit(allocator);
-                }
-                list.deinit();
-            }
-            
-            for (arr.items) |item| {
-                const infra_item = try convertJsonValueToInfraValue(allocator, item);
-                try list.append(infra_item);
-            }
-            
-            return .{ .list = list };
-        },
-        .object => |obj| {
-            var map = OrderedMap([]const u8, InfraValue).init(allocator);
-            errdefer {
-                for (map.values.items) |item| {
-                    item.deinit(allocator);
-                }
-                map.deinit();
-            }
-            
-            var iter = obj.iterator();
-            while (iter.next()) |entry| {
-                const key = try allocator.dupe(u8, entry.key_ptr.*);
-                const value = try convertJsonValueToInfraValue(allocator, entry.value_ptr.*);
-                try map.set(key, value);
-            }
-            
-            return .{ .map = map };
-        },
-    }
-}
+pub const DOMExceptionType = enum {
+    NotFoundError,
+    InvalidStateError,
+    InvalidAccessError,
+    TypeError,
+    RangeError,
+    SecurityError,
+    NetworkError,
+    // ... 30+ exception types total
+};
 ```
 
 ---
 
-## Base64 Operations (§7)
+## Parser Implementation Patterns
 
-### Forgiving Base64 Decode (§7)
+### Parsing Interfaces (§2.5)
 
-**Infra Spec** (simplified):
-> 1. Remove all ASCII whitespace from data.
-> 2. If data's code point length divides by 4 leaving no remainder:
->    - If data ends with one or two U+003D (=) code points, remove them.
-> 3. If data's code point length divides by 4 leaving a remainder of 1, return failure.
-> 4. If data contains a code point that is not one of:
->    - U+002B (+), U+002F (/), ASCII alphanumeric
->    then return failure.
-> 5. [Decode using base64 alphabet]
+**WebIDL Grammar**:
+```
+Interface ::
+    ExtendedAttributeList interface identifier Inheritance { InterfaceMembers } ;
+```
 
-**Zig Implementation** (simplified):
+**Zig Implementation**:
 ```zig
-/// Decodes a base64 string with forgiving error handling.
+/// Parses an interface definition.
 ///
-/// Implements WHATWG Infra "forgiving-base64 decode" per §7.
+/// Implements WebIDL interface grammar per §2.5.
 ///
-/// ## Spec Reference
-/// https://infra.spec.whatwg.org/#forgiving-base64-decode
-///
-/// ## Parameters
-/// - `allocator`: Allocator for output bytes
-/// - `data`: Base64 string to decode
-///
-/// ## Returns
-/// Decoded byte sequence, or error if invalid base64.
-pub fn forgivingBase64Decode(
-    allocator: Allocator,
-    data: []const u8,
-) ![]u8 {
-    // 1. Remove all ASCII whitespace from data
-    const cleaned = try removeAsciiWhitespace(allocator, data);
-    defer allocator.free(cleaned);
+/// ## Grammar
+/// Interface ::
+///     ExtendedAttributeList interface identifier Inheritance { InterfaceMembers } ;
+pub fn parseInterface(self: *Parser) !ast.Interface {
+    // Parse extended attributes
+    const ext_attrs = try self.parseExtendedAttributeList();
+    errdefer ext_attrs.deinit(self.allocator);
     
-    var working = cleaned;
+    // Expect 'interface' keyword
+    try self.expectToken(.keyword_interface);
     
-    // 2. If length divides by 4 with no remainder, remove trailing '='
-    if (working.len % 4 == 0) {
-        if (working.len >= 2 and 
-            working[working.len - 1] == '=' and 
-            working[working.len - 2] == '=') {
-            working = working[0..working.len - 2];
-        } else if (working.len >= 1 and working[working.len - 1] == '=') {
-            working = working[0..working.len - 1];
-        }
-    }
+    // Parse identifier
+    const name = try self.expectIdentifier();
     
-    // 3. If length divides by 4 leaving remainder of 1, return error
-    if (working.len % 4 == 1) {
-        return error.InvalidBase64;
-    }
+    // Parse optional inheritance
+    const inherits = try self.parseInheritance();
     
-    // 4. Validate characters
-    for (working) |byte| {
-        if (!isBase64Char(byte)) {
-            return error.InvalidBase64;
-        }
-    }
+    // Expect '{'
+    try self.expectToken(.lbrace);
     
-    // 5. Decode using standard base64 (use std.base64)
-    const decoder = std.base64.standard.Decoder;
-    const max_size = try decoder.calcSizeForSlice(working);
-    const output = try allocator.alloc(u8, max_size);
-    errdefer allocator.free(output);
+    // Parse members
+    const members = try self.parseInterfaceMembers();
+    errdefer members.deinit();
     
-    const decoded_len = try decoder.decode(output, working);
-    return allocator.realloc(output, decoded_len);
+    // Expect '}'
+    try self.expectToken(.rbrace);
+    
+    // Expect ';'
+    try self.expectToken(.semicolon);
+    
+    return ast.Interface{
+        .extended_attributes = ext_attrs,
+        .name = name,
+        .inherits = inherits,
+        .members = members,
+    };
 }
+```
 
-fn isBase64Char(byte: u8) bool {
-    return (byte >= 'A' and byte <= 'Z') or
-           (byte >= 'a' and byte <= 'z') or
-           (byte >= '0' and byte <= '9') or
-           byte == '+' or
-           byte == '/';
-}
+### Memory Management with Arena (Parser)
 
-fn removeAsciiWhitespace(allocator: Allocator, string: []const u8) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    errdefer result.deinit();
+**Pattern**: Parser uses arena allocation for AST construction.
+
+```zig
+/// Parse IDL file with arena allocation.
+pub fn parseFile(allocator: Allocator, source: []const u8) !ast.Definitions {
+    // Create arena for AST
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    errdefer arena.deinit();
     
-    for (string) |byte| {
-        // ASCII whitespace: U+0009 TAB, U+000A LF, U+000C FF, U+000D CR, U+0020 SPACE
-        if (byte != '\t' and byte != '\n' and byte != '\x0C' and 
-            byte != '\r' and byte != ' ') {
-            try result.append(byte);
-        }
-    }
+    const parser_allocator = arena.allocator();
     
-    return result.toOwnedSlice();
+    // Parse
+    var parser = Parser.init(parser_allocator, source);
+    const definitions = try parser.parse();
+    
+    // Transfer arena ownership to AST
+    definitions.arena = arena;
+    
+    return definitions;
 }
 ```
 
@@ -539,12 +374,9 @@ fn removeAsciiWhitespace(allocator: Allocator, string: []const u8) ![]u8 {
 
 ## Implementation Workflow
 
-### Step 1: Read Complete Infra Section
+### Step 1: Read Complete WebIDL Section
 
-**NEVER use grep**. Open the full spec:
-- https://infra.spec.whatwg.org/
-
-Find your section (e.g., §5.1 Lists) and read:
+**NEVER use grep**. Load complete section from `specs/webidl.md`:
 1. **Section introduction** - Understand context and purpose
 2. **ALL algorithm steps** - Don't skip any steps
 3. **Related algorithms** - Cross-references matter
@@ -553,8 +385,8 @@ Find your section (e.g., §5.1 Lists) and read:
 ### Step 2: Map Types to Zig
 
 Use the type mapping table in this skill:
-- Identify input types
-- Identify output types
+- Identify input types (JavaScript values)
+- Identify output types (WebIDL types → Zig types)
 - Identify intermediate types
 - Choose appropriate Zig types
 
@@ -577,9 +409,9 @@ pub fn algorithmName(...) !ReturnType {
 
 **Required documentation**:
 1. Brief description
-2. "Implements WHATWG Infra [algorithm] per §X.Y"
+2. "Implements WHATWG WebIDL [algorithm] per §X"
 3. Spec reference URL
-4. Complete algorithm (paste from spec)
+4. Complete algorithm (paste from spec or summarize)
 5. Parameter descriptions
 6. Return value description
 
@@ -587,8 +419,8 @@ pub fn algorithmName(...) !ReturnType {
 
 Write tests for:
 - Happy path (normal case)
-- Edge cases (empty, boundary values)
-- Error cases (invalid input)
+- Edge cases (NaN, Infinity, empty strings, null, undefined)
+- Error cases (invalid input, type errors, range errors)
 - Memory safety (no leaks with std.testing.allocator)
 
 ---
@@ -597,9 +429,9 @@ Write tests for:
 
 Before marking any implementation complete:
 
-- [ ] Read **complete** Infra section (not grep snippet)
+- [ ] Read **complete** WebIDL section (not grep snippet)
 - [ ] Read **all algorithm steps** (don't skip any)
-- [ ] Checked type mapping (Infra → Zig)
+- [ ] Checked type mapping (WebIDL → Zig)
 - [ ] Implemented all steps precisely (numbered comments)
 - [ ] Tested happy path, edge cases, errors
 - [ ] No memory leaks (verified with std.testing.allocator)
@@ -611,78 +443,57 @@ Before marking any implementation complete:
 
 ## Common Mistakes to Avoid
 
-### ❌ Mistake 1: Using Grep
-
-```bash
-# WRONG
-rg "ASCII lowercase" /path/to/spec
-
-# RIGHT
-# Open https://infra.spec.whatwg.org/#ascii-lowercase
-# Read complete section with context
-```
-
-### ❌ Mistake 2: Wrong Type Mapping
+### ❌ Mistake 1: Wrong Type for DOMString
 
 ```zig
-// WRONG: Using HashMap for ordered map (doesn't preserve order!)
-pub const OrderedMap = std.StringHashMap(Value);
+// WRONG: Using UTF-8 for DOMString (should be UTF-16!)
+pub const DOMString = []const u8;
 
-// RIGHT: Custom implementation that preserves insertion order
-pub const OrderedMap = struct {
-    keys: std.ArrayList([]const u8),
-    values: std.ArrayList(Value),
-    // Preserves order!
-};
+// RIGHT: DOMString is UTF-16 code units
+pub const DOMString = []const u16;
 ```
 
-### ❌ Mistake 3: Incomplete Algorithm
+### ❌ Mistake 2: Incomplete Type Conversion
 
 ```zig
-// WRONG: Only implementing first step
-pub fn stripNewlines(allocator: Allocator, string: []const u8) ![]u8 {
-    // Oops, only removes \n, not \r!
-    var result = std.ArrayList(u8).init(allocator);
-    for (string) |byte| {
-        if (byte != '\n') try result.append(byte);
+// WRONG: Not handling NaN and Infinity
+pub fn toLong(value: JSValue) !i32 {
+    const x = try toNumber(value);
+    return @intFromFloat(x); // Missing steps!
+}
+
+// RIGHT: Following all spec steps
+pub fn toLong(value: JSValue) !i32 {
+    // 1. Let x be ? ToNumber(V)
+    const x = try toNumber(value);
+    
+    // 2. If x is NaN, +0, −0, +∞, or −∞, return +0
+    if (std.math.isNan(x) or std.math.isInf(x) or x == 0.0) {
+        return 0;
     }
-    return result.toOwnedSlice();
-}
-
-// RIGHT: Following spec completely
-pub fn stripNewlines(allocator: Allocator, string: []const u8) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    for (string) |byte| {
-        // Spec: "remove any U+000A LF and U+000D CR"
-        if (byte != '\n' and byte != '\r') {
-            try result.append(byte);
-        }
-    }
-    return result.toOwnedSlice();
+    
+    // 3-5. Complete conversion per spec
+    // ...
 }
 ```
 
-### ❌ Mistake 4: Missing Documentation
+### ❌ Mistake 3: Missing Memory Cleanup in Parser
 
 ```zig
-// WRONG: No spec reference
-pub fn append(list: *ArrayList(T), item: T) !void {
-    try list.append(item);
+// WRONG: Leaking extended attributes on parse error
+pub fn parseInterface(self: *Parser) !ast.Interface {
+    const ext_attrs = try self.parseExtendedAttributeList();
+    try self.expectToken(.keyword_interface); // Error leaks ext_attrs!
+    // ...
 }
 
-// RIGHT: Complete documentation
-/// Appends an item to a list.
-///
-/// Implements WHATWG Infra "append" per §5.1.
-///
-/// ## Spec Reference
-/// https://infra.spec.whatwg.org/#list-append
-///
-/// ## Algorithm (Infra §5.1)
-/// To append to a list that is not an ordered set is to add the given 
-/// item to the end of the list.
-pub fn append(list: *ArrayList(T), item: T) !void {
-    try list.append(item);
+// RIGHT: Cleanup with errdefer
+pub fn parseInterface(self: *Parser) !ast.Interface {
+    const ext_attrs = try self.parseExtendedAttributeList();
+    errdefer ext_attrs.deinit(self.allocator);
+    
+    try self.expectToken(.keyword_interface);
+    // ...
 }
 ```
 
@@ -693,9 +504,9 @@ pub fn append(list: *ArrayList(T), item: T) !void {
 1. **Read complete sections** - Context prevents bugs
 2. **Number comments match spec steps** - Makes verification easy
 3. **Paste algorithm into docs** - Ensures you don't miss steps
-4. **Test with spec examples** - If spec has examples, test them
-5. **Check cross-references** - Spec often references related algorithms
-6. **Use exact terminology** - If spec says "ordered map", don't call it "map"
+4. **Check cross-references** - Spec often references ECMAScript and Infra
+5. **Use exact terminology** - If spec says "long", call it long, not int32
+6. **Test against browsers** - When in doubt, check V8, SpiderMonkey, JavaScriptCore
 
 ---
 
@@ -713,31 +524,18 @@ Load all relevant skills together for complete implementation guidance.
 
 ## Quick Reference
 
-### Finding Algorithms in Spec
-
-```
-https://infra.spec.whatwg.org/
-
-§3 Algorithms        - How to write algorithms
-§4 Primitive types   - Nulls, booleans, numbers, bytes, strings
-§5 Data structures   - Lists, maps, sets, stacks, queues, structs
-§6 JSON              - JSON ↔ Infra value conversion
-§7 Base64            - Forgiving base64 encoding/decoding
-§8 Namespaces        - Namespace URI constants
-```
-
 ### Type Mapping Quick Lookup
 
 ```
-list            → ArrayList(T)
-ordered map     → OrderedMap(K, V)      (custom!)
-ordered set     → OrderedSet(T)         (custom!)
-string          → []const u8
-byte sequence   → []const u8
-boolean         → bool
-null            → null
-code point      → u21
-byte            → u8
+boolean             → bool
+long                → i32
+double              → f64
+DOMString           → []const u16 (UTF-16)
+ByteString          → []const u8 (ASCII)
+ArrayBuffer         → ArrayBuffer
+sequence<T>         → Sequence(T)
+T?                  → Nullable(T)
+(T or U)            → Union(T, U)
 ```
 
 ### Algorithm Template
@@ -745,13 +543,13 @@ byte            → u8
 ```zig
 /// [Brief description]
 ///
-/// Implements WHATWG Infra "[name]" per §X.Y.
+/// Implements WHATWG WebIDL "[name]" per §X.
 ///
 /// ## Spec Reference
-/// https://infra.spec.whatwg.org/#[anchor]
+/// https://webidl.spec.whatwg.org/#[anchor]
 ///
-/// ## Algorithm (Infra §X.Y)
-/// [Paste complete algorithm]
+/// ## Algorithm (WebIDL §X)
+/// [Paste complete algorithm or summarize steps]
 ///
 /// ## Parameters
 /// - `param`: Description
@@ -767,4 +565,4 @@ pub fn name(param: Type) !ReturnType {
 
 ---
 
-**Remember**: Infra is the foundation. Precision matters. Other specs depend on it being correct.
+**Remember**: WebIDL is the bridge between Web APIs and JavaScript. Precision is critical because bugs cascade to every Web API implementation.
