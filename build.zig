@@ -224,6 +224,23 @@ pub fn build(b: *std.Build) void {
     const comprehensive_bench_step = b.step("bench", "Run comprehensive WebIDL performance benchmark");
     comprehensive_bench_step.dependOn(&comprehensive_bench_run.step);
 
+    // Comprehensive memory leak detection test
+    const comprehensive_memory = b.addExecutable(.{
+        .name = "comprehensive-memory-test",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("benchmarks/comprehensive_memory_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "webidl", .module = mod },
+            },
+        }),
+    });
+
+    const comprehensive_memory_run = b.addRunArtifact(comprehensive_memory);
+    const comprehensive_memory_step = b.step("memory-test", "Run comprehensive memory leak detection test (2+ minutes)");
+    comprehensive_memory_step.dependOn(&comprehensive_memory_run.step);
+
     // Documentation generation
     const docs_obj = b.addObject(.{
         .name = "webidl",
