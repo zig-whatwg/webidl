@@ -28,3 +28,9 @@ Thumbs.db
 # Testing
 *.profdata
 *.profraw
+
+# Beads daemon lock
+.beads/daemon.lock
+
+# Editor configs
+.cursorrules
