@@ -107,6 +107,9 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/parser/main.zig"),
             .target = target,
             .optimize = optimize,
+            .imports = &.{
+                .{ .name = "infra", .module = infra_mod },
+            },
         }),
     });
     b.installArtifact(parser_exe);
@@ -172,6 +175,9 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/parser/test.zig"),
             .target = target,
             .optimize = optimize,
+            .imports = &.{
+                .{ .name = "infra", .module = infra_mod },
+            },
         }),
     });
     const run_parser_tests = b.addRunArtifact(parser_tests);
@@ -200,6 +206,63 @@ pub fn build(b: *std.Build) void {
     const memory_stress_run = b.addRunArtifact(memory_stress);
     const memory_stress_step = b.step("memory-stress", "Run 2-minute memory stress test");
     memory_stress_step.dependOn(&memory_stress_run.step);
+
+    // Comprehensive WebIDL benchmark
+    const comprehensive_bench = b.addExecutable(.{
+        .name = "webidl-bench",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("benchmarks/webidl_comprehensive_bench.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "webidl", .module = mod },
+            },
+        }),
+    });
+
+    const comprehensive_bench_run = b.addRunArtifact(comprehensive_bench);
+    const comprehensive_bench_step = b.step("bench", "Run comprehensive WebIDL performance benchmark");
+    comprehensive_bench_step.dependOn(&comprehensive_bench_run.step);
+
+    // Documentation generation
+    const docs_obj = b.addObject(.{
+        .name = "webidl",
+        .root_module = mod,
+    });
+
+    const docs_install = b.addInstallDirectory(.{
+        .install_dir = .prefix,
+        .install_subdir = "docs/webidl",
+        .source_dir = docs_obj.getEmittedDocs(),
+    });
+
+    // Generate infra dependency docs
+    const infra_docs_obj = b.addObject(.{
+        .name = "infra",
+        .root_module = infra_mod,
+    });
+
+    const infra_docs_install = b.addInstallDirectory(.{
+        .install_dir = .prefix,
+        .install_subdir = "docs/deps/infra",
+        .source_dir = infra_docs_obj.getEmittedDocs(),
+    });
+
+    // Copy custom landing page
+    const landing_page = b.addInstallFile(b.path("docs/index.html"), "docs/index.html");
+
+    // Copy README for markdown rendering
+    const readme_install = b.addInstallFile(b.path("README.md"), "docs/README.md");
+
+    // Copy DEPENDENCIES.md for AI context
+    const deps_install = b.addInstallFile(b.path("DEPENDENCIES.md"), "docs/DEPENDENCIES.md");
+
+    const docs_step = b.step("docs", "Generate documentation");
+    docs_step.dependOn(&docs_install.step);
+    docs_step.dependOn(&infra_docs_install.step);
+    docs_step.dependOn(&landing_page.step);
+    docs_step.dependOn(&readme_install.step);
+    docs_step.dependOn(&deps_install.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //
