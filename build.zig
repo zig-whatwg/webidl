@@ -241,6 +241,23 @@ pub fn build(b: *std.Build) void {
     const comprehensive_memory_step = b.step("memory-test", "Run comprehensive memory leak detection test (2+ minutes)");
     comprehensive_memory_step.dependOn(&comprehensive_memory_run.step);
 
+    // Zero-copy TypedArray benchmark
+    const zerocopy_bench = b.addExecutable(.{
+        .name = "zerocopy-comparison",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("benchmarks/zerocopy_comparison.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "webidl", .module = mod },
+            },
+        }),
+    });
+
+    const zerocopy_bench_run = b.addRunArtifact(zerocopy_bench);
+    const zerocopy_bench_step = b.step("zerocopy-bench", "Compare zero-copy slice vs get/set loop performance");
+    zerocopy_bench_step.dependOn(&zerocopy_bench_run.step);
+
     // Documentation generation
     const docs_obj = b.addObject(.{
         .name = "webidl",

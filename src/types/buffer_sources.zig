@@ -95,6 +95,60 @@ pub fn TypedArray(comptime T: type) type {
             const bytes = self.buffer.data[byte_index..][0..@sizeOf(T)];
             std.mem.writeInt(T, bytes, value, .little);
         }
+
+        /// Returns a zero-copy slice view into the underlying ArrayBuffer.
+        ///
+        /// This provides direct access to the buffer's memory without copying,
+        /// enabling convenient bulk operations like @memset, @memcpy, iteration,
+        /// or passing to functions that expect slices.
+        ///
+        /// IMPORTANT: The returned slice is only valid while the ArrayBuffer
+        /// is not detached. Using the slice after detachment is undefined behavior.
+        ///
+        /// Example:
+        /// ```zig
+        /// var buffer = try ArrayBuffer.init(allocator, 1024);
+        /// defer buffer.deinit(allocator);
+        /// var typed = try TypedArray(u8).init(&buffer, 0, 256);
+        ///
+        /// // Zero-copy view for bulk operations
+        /// const view = try typed.asSlice();
+        /// @memset(view, 0); // Bulk initialization
+        /// for (view, 0..) |*item, i| {
+        ///     item.* = @intCast(i); // Direct iteration
+        /// }
+        /// ```
+        ///
+        /// Benefits:
+        /// - No copying - returns direct view into buffer memory
+        /// - Ergonomic bulk operations (memset, memcpy, for loops)
+        /// - Can pass to functions expecting []T slices
+        /// - WebKit-style zero-copy pattern
+        pub fn asSlice(self: Self) ![]T {
+            if (self.buffer.isDetached()) return error.DetachedBuffer;
+
+            const byte_start = self.byte_offset;
+            const byte_end = self.byte_offset + (self.length * @sizeOf(T));
+            const bytes = self.buffer.data[byte_start..byte_end];
+
+            // Cast byte slice to typed slice
+            // SAFETY: We validated alignment in init() and bounds here
+            return @as([*]T, @ptrCast(@alignCast(bytes.ptr)))[0..self.length];
+        }
+
+        /// Returns a zero-copy const slice view into the underlying ArrayBuffer.
+        ///
+        /// Same as asSlice() but returns a read-only view.
+        pub fn asConstSlice(self: Self) ![]const T {
+            if (self.buffer.isDetached()) return error.DetachedBuffer;
+
+            const byte_start = self.byte_offset;
+            const byte_end = self.byte_offset + (self.length * @sizeOf(T));
+            const bytes = self.buffer.data[byte_start..byte_end];
+
+            // Cast byte slice to typed slice
+            return @as([*]const T, @ptrCast(@alignCast(bytes.ptr)))[0..self.length];
+        }
     };
 }
 
@@ -203,6 +257,72 @@ test "TypedArray - detached buffer error" {
 
     try testing.expectError(error.DetachedBuffer, array.get(0));
     try testing.expectError(error.DetachedBuffer, array.set(0, 42));
+}
+
+test "TypedArray - zero-copy slice view (asSlice)" {
+    var buffer = try ArrayBuffer.init(testing.allocator, 1024);
+    defer buffer.deinit(testing.allocator);
+
+    var array = try TypedArray(u32).init(&buffer, 0, 256);
+
+    // Get zero-copy view
+    const view = try array.asSlice();
+
+    // Bulk operations on view
+    @memset(view, 0);
+    for (view, 0..) |*item, i| {
+        item.* = @intCast(i);
+    }
+
+    // Verify through TypedArray API
+    try testing.expectEqual(@as(u32, 0), try array.get(0));
+    try testing.expectEqual(@as(u32, 100), try array.get(100));
+    try testing.expectEqual(@as(u32, 255), try array.get(255));
+}
+
+test "TypedArray - zero-copy const slice view (asConstSlice)" {
+    var buffer = try ArrayBuffer.init(testing.allocator, 1024);
+    defer buffer.deinit(testing.allocator);
+
+    var array = try TypedArray(u32).init(&buffer, 0, 256);
+
+    // Set some values
+    try array.set(0, 42);
+    try array.set(10, 100);
+
+    // Get const view
+    const view = try array.asConstSlice();
+
+    // Read from view
+    try testing.expectEqual(@as(u32, 42), view[0]);
+    try testing.expectEqual(@as(u32, 100), view[10]);
+}
+
+test "TypedArray - slice view with offset" {
+    var buffer = try ArrayBuffer.init(testing.allocator, 1024);
+    defer buffer.deinit(testing.allocator);
+
+    // TypedArray starting at offset 256
+    var array = try TypedArray(u32).init(&buffer, 256, 64);
+
+    const view = try array.asSlice();
+    view[0] = 12345;
+    view[63] = 67890;
+
+    // Verify values are written at correct offset in buffer
+    try testing.expectEqual(@as(u32, 12345), try array.get(0));
+    try testing.expectEqual(@as(u32, 67890), try array.get(63));
+}
+
+test "TypedArray - slice view detached buffer error" {
+    var buffer = try ArrayBuffer.init(testing.allocator, 16);
+    defer buffer.deinit(testing.allocator);
+
+    var array = try TypedArray(u8).init(&buffer, 0, 16);
+    buffer.detach(testing.allocator);
+
+    try testing.expectError(error.DetachedBuffer, array.asSlice());
+    try testing.expectError(error.DetachedBuffer, array.asConstSlice());
 }
 
 test "DataView - uint8 operations" {

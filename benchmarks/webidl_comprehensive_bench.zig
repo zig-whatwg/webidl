@@ -493,6 +493,9 @@ fn benchmarkBufferSources(allocator: std.mem.Allocator) !void {
 
     std.debug.print("│ TypedArray(i32) (create/access)     ", .{});
     try benchBufferSourcesInt32Array(allocator);
+
+    std.debug.print("│ TypedArray(u32) zero-copy slice     ", .{});
+    try benchBufferSourcesZeroCopySlice(allocator);
 }
 
 fn benchBufferSourcesArrayBufferSmall(allocator: std.mem.Allocator) !void {
@@ -544,8 +547,8 @@ fn benchBufferSourcesInt32Array(allocator: std.mem.Allocator) !void {
     while (i < LARGE_ITERATIONS) : (i += 1) {
         var buf = try buffer_sources.ArrayBuffer.init(allocator, 1024);
         defer buf.deinit(allocator);
-        var typed = try buffer_sources.TypedArray(i32).init(&buf, 0, 128);
-        try typed.set(0, 42);
+        var typed = try buffer_sources.TypedArray(i32).init(&buf, 0, 64);
+        try typed.set(0, 12345);
         const val = try typed.get(0);
         std.mem.doNotOptimizeAway(&val);
     }
@@ -553,6 +556,26 @@ fn benchBufferSourcesInt32Array(allocator: std.mem.Allocator) !void {
     printResult(timer.read(), LARGE_ITERATIONS);
 }
 
+fn benchBufferSourcesZeroCopySlice(allocator: std.mem.Allocator) !void {
+    var timer = try std.time.Timer.start();
+
+    var i: usize = 0;
+    while (i < LARGE_ITERATIONS) : (i += 1) {
+        var buf = try buffer_sources.ArrayBuffer.init(allocator, 1024);
+        defer buf.deinit(allocator);
+        var typed = try buffer_sources.TypedArray(u32).init(&buf, 0, 256);
+
+        // Zero-copy bulk operation
+        const view = try typed.asSlice();
+        @memset(view, 42);
+        std.mem.doNotOptimizeAway(&view);
+    }
+
+    printResult(timer.read(), LARGE_ITERATIONS);
+}
+
+// ============================================================================
+// ASYNC SEQUENCES
 // ============================================================================
 // ASYNC SEQUENCES
 // ============================================================================
