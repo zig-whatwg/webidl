@@ -64,6 +64,10 @@ pub fn ObservableArray(comptime T: type) type {
             }
         }
 
+        pub fn ensureCapacity(self: *Self, capacity: usize) !void {
+            try self.items.ensureCapacity(capacity);
+        }
+
         pub fn append(self: *Self, value: T) !void {
             const index = self.items.size();
             try self.items.append(value);

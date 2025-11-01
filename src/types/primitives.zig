@@ -47,7 +47,7 @@ fn integerPart(n: f64) f64 {
     return if (n < 0.0) -@floor(@abs(n)) else @floor(@abs(n));
 }
 
-pub fn toByte(value: JSValue) !i8 {
+pub inline fn toByte(value: JSValue) !i8 {
     var x = value.toNumber();
     if (x == 0.0 and std.math.signbit(x)) x = 0.0;
     if (std.math.isNan(x) or x == 0.0 or std.math.isInf(x)) return 0;
@@ -57,7 +57,7 @@ pub fn toByte(value: JSValue) !i8 {
     return @intFromFloat(x);
 }
 
-pub fn toOctet(value: JSValue) !u8 {
+pub inline fn toOctet(value: JSValue) !u8 {
     var x = value.toNumber();
     if (x == 0.0 and std.math.signbit(x)) x = 0.0;
     if (std.math.isNan(x) or x == 0.0 or std.math.isInf(x)) return 0;
@@ -66,7 +66,7 @@ pub fn toOctet(value: JSValue) !u8 {
     return @intFromFloat(x);
 }
 
-pub fn toLong(value: JSValue) !i32 {
+pub inline fn toLong(value: JSValue) !i32 {
     // FAST PATH: If already a number and in valid i32 range, return directly
     if (value == .number) {
         const x = value.number;
@@ -88,7 +88,7 @@ pub fn toLong(value: JSValue) !i32 {
     return @intFromFloat(x);
 }
 
-pub fn toLongEnforceRange(value: JSValue) !i32 {
+pub inline fn toLongEnforceRange(value: JSValue) !i32 {
     var x = value.toNumber();
     if (std.math.isNan(x) or std.math.isInf(x)) return error.TypeError;
     x = integerPart(x);
@@ -96,7 +96,7 @@ pub fn toLongEnforceRange(value: JSValue) !i32 {
     return @intFromFloat(x);
 }
 
-pub fn toLongClamped(value: JSValue) i32 {
+pub inline fn toLongClamped(value: JSValue) i32 {
     var x = value.toNumber();
     if (std.math.isNan(x)) return 0;
     x = @min(@max(x, -2147483648.0), 2147483647.0);
@@ -104,7 +104,7 @@ pub fn toLongClamped(value: JSValue) i32 {
     return @intFromFloat(x);
 }
 
-pub fn toBoolean(value: JSValue) bool {
+pub inline fn toBoolean(value: JSValue) bool {
     // FAST PATH: If already boolean, return directly
     if (value == .boolean) {
         return value.boolean;
@@ -114,7 +114,7 @@ pub fn toBoolean(value: JSValue) bool {
     return value.toBoolean();
 }
 
-pub fn toDouble(value: JSValue) !f64 {
+pub inline fn toDouble(value: JSValue) !f64 {
     // FAST PATH: If already a number and finite, return directly
     if (value == .number) {
         const x = value.number;

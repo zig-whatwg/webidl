@@ -1,5 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const infra = @import("infra");
 
 pub const TokenType = enum {
     interface,
@@ -114,6 +115,18 @@ pub const Token = struct {
         });
     }
 };
+
+inline fn isAsciiDigit(c: u8) bool {
+    return infra.code_point.isAsciiDigit(c);
+}
+
+inline fn isAsciiHexDigit(c: u8) bool {
+    return infra.code_point.isAsciiHexDigit(c);
+}
+
+inline fn isAsciiAlphanumeric(c: u8) bool {
+    return infra.code_point.isAsciiAlphanumeric(c);
+}
 
 pub const Lexer = struct {
     source: []const u8,
@@ -298,7 +311,7 @@ pub const Lexer = struct {
             _ = self.advance(); // consume 'x' or 'X'
 
             // Scan hexadecimal digits
-            while (std.ascii.isHex(self.peek())) {
+            while (isAsciiHexDigit(self.peek())) {
                 _ = self.advance();
             }
 
@@ -314,7 +327,7 @@ pub const Lexer = struct {
             _ = self.advance(); // consume 'x' or 'X'
 
             // Scan hexadecimal digits
-            while (std.ascii.isHex(self.peek())) {
+            while (isAsciiHexDigit(self.peek())) {
                 _ = self.advance();
             }
 
@@ -327,17 +340,17 @@ pub const Lexer = struct {
         }
 
         // Decimal number
-        while (std.ascii.isDigit(self.peek())) {
+        while (isAsciiDigit(self.peek())) {
             _ = self.advance();
         }
 
         var is_float = false;
 
-        if (self.peek() == '.' and std.ascii.isDigit(self.peekNext())) {
+        if (self.peek() == '.' and isAsciiDigit(self.peekNext())) {
             is_float = true;
             _ = self.advance();
 
-            while (std.ascii.isDigit(self.peek())) {
+            while (isAsciiDigit(self.peek())) {
                 _ = self.advance();
             }
         }
@@ -350,7 +363,7 @@ pub const Lexer = struct {
                 _ = self.advance();
             }
 
-            while (std.ascii.isDigit(self.peek())) {
+            while (isAsciiDigit(self.peek())) {
                 _ = self.advance();
             }
         }
@@ -365,7 +378,7 @@ pub const Lexer = struct {
 
     fn scanIdentifierOrKeyword(self: *Lexer, start: usize, start_line: usize, start_column: usize) !Token {
         // WebIDL identifiers can contain letters, digits, underscores, and hyphens
-        while (std.ascii.isAlphanumeric(self.peek()) or self.peek() == '_' or self.peek() == '-') {
+        while (isAsciiAlphanumeric(self.peek()) or self.peek() == '_' or self.peek() == '-') {
             _ = self.advance();
         }
 

@@ -723,16 +723,68 @@ Root:
 
 ---
 
+## Dependencies
+
+This project depends on external Zig libraries. When working with dependencies:
+
+### Accessing Dependency Source Code
+
+Dependencies are cached by Zig in `~/.cache/zig/p/`. To find them:
+
+```bash
+# Find infra dependency
+find ~/.cache/zig -name "infra-0.2.0*" -type d
+
+# Current path (as of v0.2.0):
+~/.cache/zig/p/infra-0.2.0-4b_uZoxPAwA6tKFxWqTK8kleJcv-ansJKq_93rQiDHSi/
+```
+
+### Dependency Documentation
+
+1. **DEPENDENCIES.md** - Quick reference guide in repo root
+2. **Generated docs** - After `zig build docs`, see `zig-out/docs/deps/`
+3. **Source code** - Read directly from `~/.cache/zig/p/*/src/`
+4. **README** - Each dependency has README at cache path
+
+### Current Dependencies
+
+**Infra (v0.2.0)**
+- Repository: https://github.com/zig-whatwg/infra
+- Purpose: WHATWG Infra Standard primitives (lists, maps, strings)
+- Key modules: `ascii.zig`, `strings.zig`, `lists.zig`, `maps.zig`, `code_points.zig`
+- Spec: https://infra.spec.whatwg.org/
+
+### For LLMs / AI Assistants
+
+When you need to understand a dependency:
+
+1. **Check DEPENDENCIES.md first** - Contains common patterns and module overview
+2. **Read the source** - Use Read tool on `~/.cache/zig/p/*/src/` files
+3. **Generate docs** - Run `zig build docs` to get browsable API docs at `zig-out/docs/deps/`
+4. **Consult spec** - For WHATWG dependencies, refer to the relevant spec
+
+**Example - Reading infra source:**
+```bash
+# Find it
+find ~/.cache/zig -name "infra-0.2.0*" -type d
+
+# Read a module
+cat ~/.cache/zig/p/infra-0.2.0-*/src/ascii.zig
+```
+
+---
+
 ## When in Doubt
 
 1. **ASK A CLARIFYING QUESTION** ⭐ - Don't assume, just ask (one question at a time)
 2. **Check bd for existing issues** - `bd ready --json` - See if work is already tracked
 3. **Read the WHATWG spec** - Load `specs/webidl.md` for accurate algorithm details
 4. **Read the complete section** - Context matters, never rely on fragments
-5. **Load relevant skills** - Get specialized guidance
-6. **Look at existing tests** - See patterns (171+ tests available)
-7. **Check FEATURE_CATALOG.md** - See existing API patterns
-8. **Follow the Golden Rules** - Especially algorithm precision
+5. **Check dependencies** - Read DEPENDENCIES.md and dependency source if needed
+6. **Load relevant skills** - Get specialized guidance
+7. **Look at existing tests** - See patterns (171+ tests available)
+8. **Check FEATURE_CATALOG.md** - See existing API patterns
+9. **Follow the Golden Rules** - Especially algorithm precision
 
 ---
 

@@ -215,6 +215,24 @@ pub fn Sequence(comptime T: type) type {
             self.list.deinit();
         }
 
+        /// Ensures the sequence can hold at least `capacity` items without reallocating.
+        ///
+        /// This is a performance optimization to avoid multiple allocations when
+        /// the final size is known in advance.
+        ///
+        /// Example:
+        /// ```zig
+        /// var seq = Sequence(u32).init(allocator);
+        /// defer seq.deinit();
+        /// try seq.ensureCapacity(100);  // Pre-allocate for 100 items
+        /// for (0..100) |i| {
+        ///     try seq.append(@intCast(i));  // No reallocation needed
+        /// }
+        /// ```
+        pub fn ensureCapacity(self: *Self, capacity: usize) !void {
+            return self.list.ensureCapacity(capacity);
+        }
+
         /// Appends an item to the end.
         pub fn append(self: *Self, item: T) !void {
             return self.list.append(item);

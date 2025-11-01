@@ -268,6 +268,9 @@ fn benchmarkWrappers(allocator: std.mem.Allocator) !void {
     std.debug.print("│ Sequence (append - large)           ", .{});
     try benchWrappersSequenceAppendLarge(allocator);
 
+    std.debug.print("│ Sequence (w/ ensureCapacity)        ", .{});
+    try benchWrappersSequenceWithCapacity(allocator);
+
     std.debug.print("│ Record (insert/get)                 ", .{});
     try benchWrappersRecord(allocator);
 }
@@ -338,6 +341,23 @@ fn benchWrappersSequenceAppendLarge(allocator: std.mem.Allocator) !void {
     printResult(timer.read(), SMALL_ITERATIONS);
 }
 
+fn benchWrappersSequenceWithCapacity(allocator: std.mem.Allocator) !void {
+    var timer = try std.time.Timer.start();
+
+    var i: usize = 0;
+    while (i < SMALL_ITERATIONS) : (i += 1) {
+        var seq = wrappers.Sequence(u32).init(allocator);
+        defer seq.deinit();
+        try seq.ensureCapacity(100);
+        var j: u32 = 0;
+        while (j < 100) : (j += 1) {
+            try seq.append(j);
+        }
+    }
+
+    printResult(timer.read(), SMALL_ITERATIONS);
+}
+
 fn benchWrappersRecord(allocator: std.mem.Allocator) !void {
     var timer = try std.time.Timer.start();
 
@@ -364,6 +384,9 @@ fn benchmarkCollections(allocator: std.mem.Allocator) !void {
 
     std.debug.print("│ ObservableArray (append - large)    ", .{});
     try benchCollectionsObservableArrayLarge(allocator);
+
+    std.debug.print("│ ObservableArray (w/ ensureCapacity) ", .{});
+    try benchCollectionsObservableArrayWithCapacity(allocator);
 
     std.debug.print("│ Maplike (insert/get)                ", .{});
     try benchCollectionsMaplike(allocator);
@@ -395,6 +418,23 @@ fn benchCollectionsObservableArrayLarge(allocator: std.mem.Allocator) !void {
     while (i < SMALL_ITERATIONS) : (i += 1) {
         var array = ObservableArray(u32).init(allocator);
         defer array.deinit();
+        var j: u32 = 0;
+        while (j < 100) : (j += 1) {
+            try array.append(j);
+        }
+    }
+
+    printResult(timer.read(), SMALL_ITERATIONS);
+}
+
+fn benchCollectionsObservableArrayWithCapacity(allocator: std.mem.Allocator) !void {
+    var timer = try std.time.Timer.start();
+
+    var i: usize = 0;
+    while (i < SMALL_ITERATIONS) : (i += 1) {
+        var array = ObservableArray(u32).init(allocator);
+        defer array.deinit();
+        try array.ensureCapacity(100);
         var j: u32 = 0;
         while (j < 100) : (j += 1) {
             try array.append(j);
