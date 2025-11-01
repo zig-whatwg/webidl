@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-10-31
+
 ### Added
+
+#### Zero-Copy TypedArray Slice Views
+- **TypedArray slice access** (`src/types/buffer_sources.zig`)
+  - `asSlice()` - Returns mutable zero-copy view into ArrayBuffer memory
+  - `asConstSlice()` - Returns read-only zero-copy view
+  - Enables ergonomic bulk operations (@memset, @memcpy, for loops)
+  - WebKit-style zero-copy pattern
+  - No performance overhead vs get/set loop (compiler optimizes both)
+  - 5 comprehensive tests covering all use cases
+  - Benchmark: `zig build zerocopy-bench -Doptimize=ReleaseFast`
 
 #### Comprehensive Memory Leak Detection Test
 - **OS-level memory tracking** (`benchmarks/comprehensive_memory_test.zig`)
@@ -33,16 +45,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Identifies optimization opportunities with estimated gains
   - Run with: `zig build bench -Doptimize=ReleaseFast`
 
-#### Performance Optimizations (Priority 1)
+#### Performance Optimizations (Priority 1 - Complete)
 - **Sequence.ensureCapacity() API** (`src/wrappers.zig`)
   - Pre-allocate capacity to avoid multiple realloc cycles
-  - 42% performance improvement for large sequences (100 appends: 12.8μs → 7.4μs)
+  - **42% performance improvement** for large sequences (100 appends: 12.8μs → 7.4μs)
   - Matches browser WebIDL patterns (Chromium, Firefox, WebKit all pre-allocate)
   - Full documentation with usage examples
   
 - **ObservableArray.ensureCapacity() API** (`src/types/observable_arrays.zig`)
   - Pre-allocate capacity for ObservableArray collections
-  - 49% performance improvement for large arrays (100 appends: 13.6μs → 7.0μs)
+  - **49% performance improvement** for large arrays (100 appends: 13.6μs → 7.0μs)
   - Consistent with Sequence API for predictable performance
 
 - **Inline keyword for hot path primitives** (`src/types/primitives.zig`)
@@ -50,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Guarantees inlining of fast-path type conversions
   - Maintains ultra-fast performance (0-2ns/op)
   - Matches Firefox MOZ_ALWAYS_INLINE and WebKit patterns
+
+- **Zero-copy TypedArray views** (`src/types/buffer_sources.zig`)
+  - asSlice() and asConstSlice() for direct buffer access
+  - Ergonomic bulk operations without copying
+  - Performance equivalent to get/set loop with cleaner API
 
 #### Byte String Operations Module (Infra Integration - Phase 4)
 - **New byte_strings module** (`src/types/byte_strings.zig`)
@@ -122,10 +139,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Performance
 
-#### Optimization Results (Priority 1 Implementation)
+#### Optimization Results (Priority 1 - Complete)
 - **Sequence operations**: 42% faster with `ensureCapacity()` (12.8μs → 7.4μs for 100 appends)
 - **ObservableArray operations**: 49% faster with `ensureCapacity()` (13.6μs → 7.0μs for 100 appends)
 - **Primitive conversions**: Maintained ultra-fast performance (0-2ns/op) with explicit `inline`
+- **Zero-copy views**: Equivalent performance to get/set loop, cleaner API for bulk operations
 - **Overall**: Pre-allocation optimization exceeded estimates (20-30% estimated, 42-49% achieved)
 
 #### Baseline Performance Metrics
@@ -140,7 +158,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **String conversion**: SIMD-optimized via Infra (2-3x faster for string comparisons)
 - **Memory**: Reduced allocations in `toUSVString()` (uses Infra's optimized path)
 
-## [0.2.0] - 2024-10-30
+### Changed
+
+- **Documentation structure** - Moved CHANGELOG.md to root directory
+- **Repository cleanup** - Removed documentation/ directory with stale reports (23 files, 9030 lines)
+
+## [0.1.0] - 2024-10-30
 
 ### Added
 

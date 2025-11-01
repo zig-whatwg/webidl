@@ -4,7 +4,7 @@
 
 Production-ready WebIDL runtime support library and parser for Zig, providing type conversions, error handling, wrapper types, and complete WebIDL parsing with AST generation.
 
-**Status**: ✅ **Production Ready** - 100% Feature Complete | 171+ Tests | Zero Memory Leaks | Browser-Competitive Performance | 333/333 Files Parsed
+**Status**: ✅ **Production Ready** - v0.2.0 | 100% Feature Complete | 175+ Tests | Zero Memory Leaks | Browser-Competitive Performance | 333/333 Files Parsed
 
 ## Features
 
