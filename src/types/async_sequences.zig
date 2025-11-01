@@ -29,6 +29,7 @@
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const infra = @import("infra");
 
 /// AsyncSequence<T> represents a WebIDL async_sequence<T> type.
 ///
@@ -118,6 +119,102 @@ pub fn AsyncSequence(comptime T: type) type {
             }
 
             return try list.toOwnedSlice(allocator);
+        }
+    };
+}
+
+/// BufferedAsyncSequence<T> provides async iteration with buffering using infra.Queue.
+///
+/// Spec: https://webidl.spec.whatwg.org/#idl-async-iterable
+///
+/// This implementation allows producers to push values into a buffer (queue) and
+/// consumers to pull values asynchronously. This enables backpressure handling
+/// and decouples producer/consumer execution.
+///
+/// Use Cases:
+/// - Fetch Streams API - Buffer response body chunks
+/// - ReadableStream - Buffer data chunks
+/// - File System Access API - Buffer directory entries
+///
+/// Example:
+/// ```zig
+/// var seq = BufferedAsyncSequence([]const u8).init(allocator);
+/// defer seq.deinit();
+///
+/// // Producer: Push chunks as they arrive
+/// try seq.push("chunk1");
+/// try seq.push("chunk2");
+/// seq.close(); // Signal end of stream
+///
+/// // Consumer: Read chunks
+/// while (try seq.next()) |chunk| {
+///     processChunk(chunk);
+/// }
+/// ```
+pub fn BufferedAsyncSequence(comptime T: type) type {
+    return struct {
+        const Self = @This();
+
+        queue: infra.Queue(T),
+        allocator: Allocator,
+        closed: bool,
+
+        /// Initialize buffered async sequence
+        pub fn init(allocator: Allocator) Self {
+            return .{
+                .queue = infra.Queue(T).init(allocator),
+                .allocator = allocator,
+                .closed = false,
+            };
+        }
+
+        /// Clean up resources
+        pub fn deinit(self: *Self) void {
+            self.queue.deinit();
+        }
+
+        /// Producer: Push value into buffer
+        ///
+        /// Returns error.SequenceClosed if sequence was already closed.
+        pub fn push(self: *Self, value: T) !void {
+            if (self.closed) return error.SequenceClosed;
+            try self.queue.enqueue(value);
+        }
+
+        /// Consumer: Get next value from buffer
+        ///
+        /// Returns:
+        /// - `T` if a value is available in buffer
+        /// - `null` if sequence is closed and buffer is empty (end of iteration)
+        /// - Waits if sequence is open but buffer is empty (in real async impl)
+        pub fn next(self: *Self) !?T {
+            if (self.queue.isEmpty() and self.closed) {
+                return null;
+            }
+            return self.queue.dequeue();
+        }
+
+        /// Producer: Signal end of sequence
+        ///
+        /// After calling close(), no more values can be pushed.
+        /// Consumer will receive null after draining the buffer.
+        pub fn close(self: *Self) void {
+            self.closed = true;
+        }
+
+        /// Check if sequence is closed (no more values will be produced)
+        pub fn isClosed(self: Self) bool {
+            return self.closed;
+        }
+
+        /// Get number of buffered values waiting to be consumed
+        pub fn bufferedCount(self: Self) usize {
+            return self.queue.items_list.size();
+        }
+
+        /// Check if buffer is empty
+        pub fn isEmpty(self: Self) bool {
+            return self.queue.isEmpty();
         }
     };
 }
@@ -246,4 +343,152 @@ test "AsyncSequence - custom iterator" {
     try testing.expectEqual(@as(?u32, 3), try seq.iterator.next());
     try testing.expectEqual(@as(?u32, 4), try seq.iterator.next());
     try testing.expectEqual(@as(?u32, null), try seq.iterator.next());
+}
+
+// ============================================================================
+// BufferedAsyncSequence Tests
+// ============================================================================
+
+test "BufferedAsyncSequence - producer/consumer pattern" {
+    var seq = BufferedAsyncSequence(u32).init(testing.allocator);
+    defer seq.deinit();
+
+    try seq.push(1);
+    try seq.push(2);
+    try seq.push(3);
+    seq.close();
+
+    try testing.expectEqual(@as(?u32, 1), try seq.next());
+    try testing.expectEqual(@as(?u32, 2), try seq.next());
+    try testing.expectEqual(@as(?u32, 3), try seq.next());
+    try testing.expectEqual(@as(?u32, null), try seq.next());
+}
+
+test "BufferedAsyncSequence - close prevents push" {
+    var seq = BufferedAsyncSequence(u32).init(testing.allocator);
+    defer seq.deinit();
+
+    try seq.push(1);
+    seq.close();
+
+    try testing.expectError(error.SequenceClosed, seq.push(2));
+}
+
+test "BufferedAsyncSequence - buffered count" {
+    var seq = BufferedAsyncSequence(u32).init(testing.allocator);
+    defer seq.deinit();
+
+    try testing.expectEqual(@as(usize, 0), seq.bufferedCount());
+
+    try seq.push(1);
+    try seq.push(2);
+    try seq.push(3);
+
+    try testing.expectEqual(@as(usize, 3), seq.bufferedCount());
+
+    _ = try seq.next();
+    try testing.expectEqual(@as(usize, 2), seq.bufferedCount());
+
+    _ = try seq.next();
+    try testing.expectEqual(@as(usize, 1), seq.bufferedCount());
+
+    _ = try seq.next();
+    try testing.expectEqual(@as(usize, 0), seq.bufferedCount());
+}
+
+test "BufferedAsyncSequence - isEmpty check" {
+    var seq = BufferedAsyncSequence(u32).init(testing.allocator);
+    defer seq.deinit();
+
+    try testing.expect(seq.isEmpty());
+
+    try seq.push(42);
+    try testing.expect(!seq.isEmpty());
+
+    _ = try seq.next();
+    try testing.expect(seq.isEmpty());
+}
+
+test "BufferedAsyncSequence - isClosed check" {
+    var seq = BufferedAsyncSequence(u32).init(testing.allocator);
+    defer seq.deinit();
+
+    try testing.expect(!seq.isClosed());
+
+    seq.close();
+    try testing.expect(seq.isClosed());
+}
+
+test "BufferedAsyncSequence - empty closed sequence" {
+    var seq = BufferedAsyncSequence(u32).init(testing.allocator);
+    defer seq.deinit();
+
+    seq.close();
+
+    try testing.expectEqual(@as(?u32, null), try seq.next());
+}
+
+test "BufferedAsyncSequence - drain after close" {
+    var seq = BufferedAsyncSequence(u32).init(testing.allocator);
+    defer seq.deinit();
+
+    try seq.push(1);
+    try seq.push(2);
+    try seq.push(3);
+
+    seq.close();
+
+    try testing.expectEqual(@as(?u32, 1), try seq.next());
+    try testing.expectEqual(@as(?u32, 2), try seq.next());
+    try testing.expectEqual(@as(?u32, 3), try seq.next());
+    try testing.expectEqual(@as(?u32, null), try seq.next());
+}
+
+test "BufferedAsyncSequence - string chunks" {
+    var seq = BufferedAsyncSequence([]const u8).init(testing.allocator);
+    defer seq.deinit();
+
+    try seq.push("chunk1");
+    try seq.push("chunk2");
+    try seq.push("chunk3");
+    seq.close();
+
+    try testing.expectEqualStrings("chunk1", (try seq.next()).?);
+    try testing.expectEqualStrings("chunk2", (try seq.next()).?);
+    try testing.expectEqualStrings("chunk3", (try seq.next()).?);
+    try testing.expectEqual(@as(?[]const u8, null), try seq.next());
+}
+
+test "BufferedAsyncSequence - large buffer" {
+    var seq = BufferedAsyncSequence(u32).init(testing.allocator);
+    defer seq.deinit();
+
+    var i: u32 = 0;
+    while (i < 1000) : (i += 1) {
+        try seq.push(i);
+    }
+
+    try testing.expectEqual(@as(usize, 1000), seq.bufferedCount());
+
+    seq.close();
+
+    i = 0;
+    while (try seq.next()) |value| {
+        try testing.expectEqual(i, value);
+        i += 1;
+    }
+
+    try testing.expectEqual(@as(u32, 1000), i);
+}
+
+test "BufferedAsyncSequence - no memory leaks" {
+    var seq = BufferedAsyncSequence(u32).init(testing.allocator);
+    defer seq.deinit();
+
+    var i: u32 = 0;
+    while (i < 100) : (i += 1) {
+        try seq.push(i);
+    }
+
+    while (try seq.next()) |_| {}
 }

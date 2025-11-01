@@ -50,6 +50,8 @@ const std = @import("std");
 pub const errors = @import("errors.zig");
 pub const primitives = @import("types/primitives.zig");
 pub const strings = @import("types/strings.zig");
+pub const byte_strings = @import("types/byte_strings.zig");
+pub const code_points = @import("types/code_points.zig");
 pub const bigint = @import("types/bigint.zig");
 pub const enumerations = @import("types/enumerations.zig");
 pub const dictionaries = @import("types/dictionaries.zig");
@@ -74,6 +76,7 @@ pub const JSValue = primitives.JSValue;
 pub const DOMString = strings.DOMString;
 pub const ByteString = strings.ByteString;
 pub const USVString = strings.USVString;
+pub const CodePoint = code_points.CodePoint;
 
 // Re-export wrapper types
 pub const Nullable = wrappers.Nullable;
@@ -117,8 +120,9 @@ pub const ValueIterable = iterables.ValueIterable;
 pub const PairIterable = iterables.PairIterable;
 pub const AsyncIterable = iterables.AsyncIterable;
 
-// Re-export async sequence type
+// Re-export async sequence types
 pub const AsyncSequence = async_sequences.AsyncSequence;
+pub const BufferedAsyncSequence = async_sequences.BufferedAsyncSequence;
 
 // Re-export namespace helper
 pub const Namespace = namespaces.Namespace;
